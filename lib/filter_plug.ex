@@ -22,7 +22,7 @@ defmodule Tapper.Plug.PrefixFilter do
   def split(prefix) when is_binary(prefix) do
     String.split(prefix, "/", trim: true)
   end
-  def split(prefix), do: raise ArgumentError, ~S(prefixes must be a path "/a/b" or list of path components ["a","b"])
+  def split(_prefix), do: raise ArgumentError, ~S(prefixes must be a path "/a/b" or list of path components ["a","b"])
 
   def call(conn, []), do: conn
   def call(conn, prefixes) do
