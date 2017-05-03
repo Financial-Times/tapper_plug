@@ -1,4 +1,5 @@
 defmodule Tapper.Plug.HeaderPropagation do
+  @moduledoc "Decode B3 Headers into trace properties."
 
   require Logger
 
@@ -10,6 +11,32 @@ defmodule Tapper.Plug.HeaderPropagation do
 
   @type sampled :: boolean() | :absent
 
+  @doc """
+  Decode B3 headers from a list of `{header_name, header_value}` tuples.
+
+  Returns either the atom `:start` if (valid) B3 headers were not present (which is a suggestion,
+  rather than an instruction, since sampling is a separate concern), or the tuple
+  `{:join, trace_id, span_id, parent_span_id, sampled, debug}` which passes on the decoded
+  values of the B3 headers. Note that if the parent_span_id is absent, implying the root
+  span, this function sets it to the atom `:root`, rather than `nil`.
+
+  Whether the trace should be sampled on a `:join` result depends on the values of `sampled` and `debug`.
+  `sampled` can be `true` (the originator is sampling this trace, and expects us to do so too) or `false`
+  when the originator is not sampling this trace and doesn't expect us to either, or the atom `:absent`
+  when the originator does not pass the `X-B3-Sampled` header, implying that determining whether to trace
+  is up to us. The `debug` flag, if `true` implies  we should always sample the trace regardless of the
+  `sampled` status:
+
+  | Result | `sampled` | `debug` | should sample? |
+  | ------ | ------- | ----- | -------------- |
+  | :join  | false   | false | no             |
+  | :join  | true    | false | yes            |
+  | :join  | false   | true  | yes            |
+  | :join  | true    | true  | yes            |
+  | :join  | :absent | true  | yes            |
+  | :join  | :absent | false | maybe          |
+
+  """
   @spec decode([{String.t, String.t}]) :: {:join, Tapper.Id.TraceId.t, Tapper.Id.SpanId.t, Tapper.Id.SpanId.t, sampled(), boolean()} | :start
   def decode(headers) do
     with {@b3_trace_id_header, trace_id} <- List.keyfind(headers, @b3_trace_id_header, 0),
@@ -20,16 +47,16 @@ defmodule Tapper.Plug.HeaderPropagation do
       {:ok, parent_span_id} <- if(parent_span_id == :root, do: {:ok, :root}, else: Tapper.SpanId.parse(parent_span_id))
     do
       sample = case List.keyfind(headers, @b3_sampled_header, 0) do
-        {_, sampled} -> sampled == "1"
+        {_, "1"} -> true
+        {_, "0"} -> false
         nil -> :absent
+        _ -> false
       end
 
-      flags = case List.keyfind(headers, @b3_flags_header, 0) do
-        {_, flags} -> flags
-        nil -> ""
+      debug = case List.keyfind(headers, @b3_flags_header, 0) do
+        {_, "1"} -> true
+        _ -> false
       end
-
-      debug = flags == "1"
 
       {:join, trace_id, span_id, parent_span_id, sample, debug}
     else

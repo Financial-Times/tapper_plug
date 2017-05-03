@@ -39,7 +39,7 @@ defmodule HeaderPropagationTest do
     assert debug == false
   end
 
-  test "join a span, debug flag" do
+  test "join a span, no sample, debug flag on" do
     {:join, {trace_id, _uniq}, span_id, parent_span_id, sample, debug} =
       decode([{"x-b3-traceid","123"},{"x-b3-spanid","abc"},{"x-b3-parentspanid","ffe"},{"x-b3-flags", "1"}])
 
