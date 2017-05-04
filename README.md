@@ -7,22 +7,18 @@
 Add plugs to your pipeline to add Tapper tracing to each request, e.g. in your Phoenix `Endpoint`:
 
 ```elixir
-plug Tapper.Plug.PrefixFilter, prefixes: ["__gtg", "foo/bar"]  ## (1) ignored URL prefixes
+plug Tapper.Plug.Filter, prefixes: ["__gtg", "foo/bar"]  ## (1) ignored URL prefixes
 
-plug Tapper.Plug.Start  ## (2) intercept incoming B3 headers, start trace
+plug Tapper.Plug.Trace  ## (2) intercept incoming B3 headers, start trace
 
 # other plugs
 plug Plug.RequestId
-...
 
-plug Myapp.Web.Router  # standard Phoenix router
-
-plug Tapper.Plug.Finish ## (3) finish trace spans
+plug Myapp.Web.Router  # standard Phoenix router etc.
 ```
 
-  1. you can exclude certain URLs for the purposes of tracing using the optional `Tapper.Plug.PrefixFilter`.
-  2. install the `Tapper.Plug.Start` plug as soon as possible in the plug list, for accuracy. This plug reads any incoming B3 style headers, and either joins the incoming span, or starts a new one (dependent on result of sampling), adding a 'server receive' annotation, and various other binary annotations with incoming request details.
-  3. install the `Tapper.Plug.Finish` plug after most, if not all request processing, for accuracy. This plug finishes the top-level span, adding a 'server send' annotation.
+  1. you can exclude certain URLs for the purposes of tracing using the optional `Tapper.Plug.Filter`.
+  2. install the `Tapper.Plug.Trace` plug as soon as possible in the plug list, for accuracy. This plug reads any incoming B3 style headers, and either joins the incoming span, or starts a new one (dependent on result of sampling), adding a 'server receive' annotation, and various other binary annotations with incoming request details.
 
 ## Obtaining the Trace Id in applications
 
@@ -41,9 +37,10 @@ id = Tapper.finish_span(id)
 
 The `get/1` function also works directly from the value of the `private` property, if you only have access to `private`, e.g. in Absinthe.
 
-It is the application's responsibility to maintain the Trace Id across its child-spans, but it need not update the `Plug.Conn` as it goes.
+It is the application's responsibility to maintain the Trace Id across its child-spans, but it should not update the id in the `Plug.Conn` as it goes, since this plug is only interested in 
+the top-level trace.
 
-## Filtering with `Tapper.Plug.PrefixFilter`
+## Filtering with `Tapper.Plug.Filter`
 
 This filter takes a list of URL path prefixes (in either path or patch-segment list format) which
 should be excluded from sampling, even if a sampled or debug B3 header is sent. It sets the
@@ -52,19 +49,19 @@ tapper id to `:ignore`, which may be useful to client functions (indeed it is ma
 
 ## Sampling
 
-`Tapper.Start.Plug` takes a `sampler` option, specifying a module or fun (arity 2)
-to call with the `Plug.Conn` and configuration which should return a boolean a
-trace is to be sampled. The default sampler is `Tapper.Plug.Sampler.Simple`. 
+`Tapper.Plug.Trace` takes a `sampler` option, specifying a module with a `sample?/2` function, 
+or fun (arity 2) to call with the `Plug.Conn` and the plug's configuration, which should return a boolean 
+if a trace is to be sampled. The default sampler is `Tapper.Plug.Sampler.Simple`, which samples
+a percentage of requests.
 
-The sampler is only called if the trace is not already sampled due to an incoming B3 header,
-or due to the `debug` option being set on the plug.
+The sampler is only called if:
+    * the trace is not already sampled due to an incoming B3 header,
+    * the `debug` option is not set to `true`.
 
-Note that sampling cannot be started after `Tapper.Start.Plug` has determined that sampling
-should not take place; this is because this causes operations to become no-ops.
-
-(A work-around is to hard-code the sample flag, and extend the `recorder` function/module
-to determine if to actually propagate the trace, at the expense of recording data that might
-not be sent. This functionality may be included as standard in future). 
+> Note that you cannot turn sampling on for a trace after `Tapper.Plug.Trace` has determined 
+that sampling should not take place; this is because this causes operations to become no-ops. 
+A work-around for this, to allow traces to be sampled post-fact, may be included in future versions, but for now, you could hard-code the `debug` flag to `true`, and take care of 
+determining whether to report a trace in an implementation of Tapper's reporter.
 
 ## Installation
 
