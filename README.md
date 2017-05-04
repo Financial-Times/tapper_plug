@@ -26,18 +26,17 @@ plug Tapper.Plug.Finish ## (3) finish trace spans
 
 ## Obtaining the Trace Id in applications
 
-Applications can retreive the Tapper Trace id from the `%Plug.Conn{}` using the `Tapper.Plug.get/1` function, and then use it to start child spans etc.:
+Applications can retrieve the Tapper Trace id from the `%Plug.Conn{}` using the `Tapper.Plug.get/1` function, and then use it to start child spans etc.:
 
 ```elixir
 id = Tapper.Plug.get(conn)
 
-id 
-|> Tapper.start_span(id, name: "remote api call")
+id = Tapper.start_span(id, name: "remote api call")
 |> Tapper.http_host("www.my-service.com")
 
 ...
 
-Tapper.finish_span(id)
+id = Tapper.finish_span(id)
 ```
 
 The `get/1` function also works directly from the value of the `private` property, if you only have access to `private`, e.g. in Absinthe.
