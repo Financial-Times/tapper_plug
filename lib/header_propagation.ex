@@ -1,5 +1,5 @@
 defmodule Tapper.Plug.HeaderPropagation do
-  @moduledoc "Decode B3 Headers into trace properties."
+  @moduledoc "Decode [B3](https://github.com/openzipkin/b3-propagation) Headers into trace properties."
 
   require Logger
 
@@ -12,7 +12,7 @@ defmodule Tapper.Plug.HeaderPropagation do
   @type sampled :: boolean() | :absent
 
   @doc """
-  Decode B3 headers from a list of `{header_name, header_value}` tuples.
+  Decode [B3](https://github.com/openzipkin/b3-propagation) headers from a list of `{header_name, header_value}` tuples.
 
   Returns either the atom `:start` if (valid) B3 headers were not present (which is a suggestion,
   rather than an instruction, since sampling is a separate concern), or the tuple
@@ -64,10 +64,38 @@ defmodule Tapper.Plug.HeaderPropagation do
         Logger.debug("No B3 headers (or incomplete ones)")
         :start
       :error ->
-        Logger.info("Bad B3 headers #{inspect headers}")
+        Logger.info(fn -> "Bad B3 headers #{inspect headers}" end)
         :start
     end
 
+  end
+
+  @doc """
+  Encode a Tapper id into a list of B3 propagation headers,
+  i.e. a list of 2-tuples like `{"x-b3-traceid", "463ac35c9f6413ad48485a3953bb6124"}`.
+
+  ## Example
+  ```
+    id = Tapper.start_span(id, name: "foo")
+  ...
+    headers = Tapper.Plug.HeaderPropagation.encode(id)
+    response = HTTPoison.get("http://some.service.com/some/api", headers)
+  ```
+  """
+  def encode(id = %Tapper.Id{}), do: encode(Tapper.Id.destructure(id))
+
+  def encode({trace_id, span_id, parent_span_id, sample, debug}) do
+    headers = [
+      {@b3_trace_id_header, Tapper.TraceId.to_hex(trace_id)},
+      {@b3_span_id_header, Tapper.SpanId.to_hex(span_id)},
+      {@b3_sampled_header, if(sample, do: "1", else: "0")},
+      {@b3_flags_header, if(debug, do: "1", else: "0")}
+    ]
+
+    case parent_span_id do
+      :root -> headers
+      parent_span_id -> [{@b3_parent_span_id_header, Tapper.SpanId.to_hex(parent_span_id)} | headers]
+    end
   end
 
 end

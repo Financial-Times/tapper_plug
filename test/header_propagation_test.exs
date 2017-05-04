@@ -3,16 +3,22 @@ defmodule HeaderPropagationTest do
 
   import Tapper.Plug.HeaderPropagation
 
-  test "join a span, no sample, no flags" do
-    {:join, {trace_id, _uniq}, span_id, parent_span_id, sample, debug} =
+  test "join a span with parent span id" do
+    {:join, {trace_id, _uniq}, span_id, parent_span_id, _sample, _debug} =
       decode([{"x-b3-traceid","123"},{"x-b3-spanid","abc"},{"x-b3-parentspanid","ffe"}])
 
     assert trace_id == String.to_integer("123", 16)
     assert span_id == String.to_integer("abc", 16)
     assert parent_span_id == String.to_integer("ffe", 16)
+  end
 
-    assert sample == :absent
-    assert debug == false
+  test "join a span, no parent span id" do
+    {:join, {trace_id, _uniq}, span_id, parent_span_id, _sample, _debug} =
+      decode([{"x-b3-traceid","123"},{"x-b3-spanid","abc"}])
+
+    assert trace_id == String.to_integer("123", 16)
+    assert span_id == String.to_integer("abc", 16)
+    assert parent_span_id == :root
   end
 
   test "join a span, sampled" do
@@ -92,6 +98,34 @@ defmodule HeaderPropagationTest do
 
     assert sample == true
     assert debug == false
+  end
+
+  test "encode id with root parent span" do
+    trace_id = Tapper.TraceId.generate()
+    span_id = Tapper.SpanId.generate()
+    parent_span_id = :root
+
+    headers = encode({trace_id, span_id, parent_span_id, true, false})
+
+    assert {"x-b3-traceid",Tapper.TraceId.to_hex(trace_id)} in headers
+    assert {"x-b3-spanid",Tapper.SpanId.to_hex(span_id)} in headers
+    assert {"x-b3-sampled","1"} in headers
+    assert {"x-b3-flags","0"} in headers
+    assert not :lists.keymember("x-b3-parentspanid", 1, headers)
+  end
+
+  test "encode id with non-root parent span" do
+    trace_id = Tapper.TraceId.generate()
+    span_id = Tapper.SpanId.generate()
+    parent_span_id = Tapper.SpanId.generate()
+
+    headers = encode({trace_id, span_id, parent_span_id, false, true})
+
+    assert {"x-b3-traceid",Tapper.TraceId.to_hex(trace_id)} in headers
+    assert {"x-b3-spanid",Tapper.SpanId.to_hex(span_id)} in headers
+    assert {"x-b3-parentspanid",Tapper.SpanId.to_hex(parent_span_id)} in headers
+    assert {"x-b3-sampled","0"} in headers
+    assert {"x-b3-flags","1"} in headers
   end
 
 end
