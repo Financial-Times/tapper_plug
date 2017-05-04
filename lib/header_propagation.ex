@@ -1,5 +1,5 @@
 defmodule Tapper.Plug.HeaderPropagation do
-  @moduledoc "Decode [B3](https://github.com/openzipkin/b3-propagation) Headers into trace properties."
+  @moduledoc "Decode/Encode [B3](https://github.com/openzipkin/b3-propagation) Headers to/from trace properties."
 
   require Logger
 

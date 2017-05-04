@@ -37,7 +37,7 @@ id = Tapper.finish_span(id)
 
 The `get/1` function also works directly from the value of the `private` property, if you only have access to `private`, e.g. in Absinthe.
 
-It is the application's responsibility to maintain the Trace Id across its child-spans, but it should not update the id in the `Plug.Conn` as it goes, since this plug is only interested in 
+It is the application's responsibility to maintain the Trace Id across its child-spans, but it should not update the id in the `Plug.Conn` as it goes, since this plug is only interested in
 the top-level trace.
 
 ## Filtering with `Tapper.Plug.Filter`
@@ -49,19 +49,35 @@ tapper id to `:ignore`, which may be useful to client functions (indeed it is ma
 
 ## Sampling
 
-`Tapper.Plug.Trace` takes a `sampler` option, specifying a module with a `sample?/2` function, 
-or fun (arity 2) to call with the `Plug.Conn` and the plug's configuration, which should return a boolean 
-if a trace is to be sampled. The default sampler is `Tapper.Plug.Sampler.Simple`, which samples
-a percentage of requests.
+`Tapper.Plug.Trace` takes a `sampler` option, specifying a module with a `sample?/2` function,
+or a fun with arity 2, to call with the `Plug.Conn` and the `Trace` plug's configuration; this
+function should return a boolean if a trace is to be sampled. 
+
+The default sampler is [`Tapper.Plug.Sampler.Simple`](lib/sampler.ex), which samples a percentage of requests.
 
 The sampler is only called if:
-    * the trace is not already sampled due to an incoming B3 header,
+    * the trace is not already sampled due to an incoming header,
     * the `debug` option is not set to `true`.
 
-> Note that you cannot turn sampling on for a trace after `Tapper.Plug.Trace` has determined 
-that sampling should not take place; this is because this causes operations to become no-ops. 
-A work-around for this, to allow traces to be sampled post-fact, may be included in future versions, but for now, you could hard-code the `debug` flag to `true`, and take care of 
+> Note that you cannot turn sampling on for a trace after `Tapper.Plug.Trace` has determined
+that sampling should not take place; this is because this causes operations to become no-ops.
+A work-around for this, to allow traces to be sampled post-fact, may be included in future versions, but for now, you could hard-code the `debug` flag to `true`, and take care of
 determining whether to report a trace in an implementation of Tapper's reporter.
+
+## Propagating a Trace
+
+`Tapper.Plug.HeaderPropagation.decode/1` will decode a Tapper Id into [B3](https://github.com/openzipkin/b3-propagation) headers suitable for passing to HTTPoison etc.
+for propagation to down-stream servers:
+
+```elixir
+id = Tapper.start_span(id, name: "call-out")
+
+headers = Tapper.Plug.HeaderPropagation.encode(id)
+
+response = HTTPoison.get("http://some.service.com/some/api", headers)
+```
+
+For non-HTTP propagation, you could translate the headers to whatever structure you need to populate.
 
 ## Installation
 
