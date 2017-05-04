@@ -1,4 +1,4 @@
-defmodule Tapper.Plug.PrefixFilter do
+defmodule Tapper.Plug.Filter do
   @moduledoc """
   Tapper filter plug, to prevent tracing of certain URLs.
 
@@ -26,13 +26,13 @@ defmodule Tapper.Plug.PrefixFilter do
 
   def call(conn, []), do: conn
   def call(conn, prefixes) do
-    case is_prefix(prefixes, conn.path_info) do
+    case is_prefix?(prefixes, conn.path_info) do
       true -> Tapper.Plug.store(conn, :ignore)
       false -> conn
     end
   end
 
-  def is_prefix(prefixes, path_info) do
+  def is_prefix?(prefixes, path_info) do
     Enum.any?(prefixes, fn(prefix) -> :lists.prefix(prefix, path_info) end)
   end
 

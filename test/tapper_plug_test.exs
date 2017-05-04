@@ -11,11 +11,11 @@ defmodule TapperPlugTest do
   end
 
   test "id is sampled when no propagated trace, if sampler returns true" do
-    config = Tapper.Plug.Start.init(sampler: fn(_,_) -> true end)
+    config = Tapper.Plug.Trace.init(sampler: fn(_,_) -> true end)
 
     conn = conn(:get, "/test")
 
-    new_conn = Tapper.Plug.Start.call(conn, config)
+    new_conn = Tapper.Plug.Trace.call(conn, config)
 
     id = new_conn.private[:tapper_plug]
 
@@ -23,11 +23,11 @@ defmodule TapperPlugTest do
   end
 
   test "id is not sampled when no propagated trace, if sampler returns false" do
-    config = Tapper.Plug.Start.init(sampler: fn(_,_) -> false end)
+    config = Tapper.Plug.Trace.init(sampler: fn(_,_) -> false end)
 
     conn = conn(:get, "/test")
 
-    new_conn = Tapper.Plug.Start.call(conn, config)
+    new_conn = Tapper.Plug.Trace.call(conn, config)
 
     id = new_conn.private[:tapper_plug]
 
@@ -35,12 +35,12 @@ defmodule TapperPlugTest do
   end
 
   test "id remains :ignore if ignoring" do
-    config = Tapper.Plug.Start.init(sampler: fn(_,_) -> true end)
+    config = Tapper.Plug.Trace.init(sampler: fn(_,_) -> true end)
 
     conn = conn(:get, "/test")
     |> Tapper.Plug.store(:ignore)
 
-    new_conn = Tapper.Plug.Start.call(conn, config)
+    new_conn = Tapper.Plug.Trace.call(conn, config)
 
     id = new_conn.private[:tapper_plug]
 
@@ -48,7 +48,7 @@ defmodule TapperPlugTest do
   end
 
   test "id is sampled when propagated trace is sampled" do
-    config = Tapper.Plug.Start.init(sampler: fn(_,_) -> false end)
+    config = Tapper.Plug.Trace.init(sampler: fn(_,_) -> false end)
 
     conn = conn(:get, "/test")
     |> put_req_header("x-b3-traceid", "1fffffff")
@@ -56,7 +56,7 @@ defmodule TapperPlugTest do
     |> put_req_header("x-b3-spanid", "ffff")
     |> put_req_header("x-b3-sampled", "1")
 
-    new_conn = Tapper.Plug.Start.call(conn, config)
+    new_conn = Tapper.Plug.Trace.call(conn, config)
 
     id = new_conn.private[:tapper_plug]
 
@@ -64,7 +64,7 @@ defmodule TapperPlugTest do
   end
 
   test "id is not sampled when propagated trace is not sampled" do
-    config = Tapper.Plug.Start.init(sampler: fn(_) -> false end)
+    config = Tapper.Plug.Trace.init(sampler: fn(_) -> false end)
 
     conn = conn(:get, "/test")
     |> put_req_header("x-b3-traceid", "1fffffff")
@@ -72,7 +72,7 @@ defmodule TapperPlugTest do
     |> put_req_header("x-b3-spanid", "ffff")
     |> put_req_header("x-b3-sampled", "0")
 
-    new_conn = Tapper.Plug.Start.call(conn, config)
+    new_conn = Tapper.Plug.Trace.call(conn, config)
 
     id = new_conn.private[:tapper_plug]
 
