@@ -101,29 +101,29 @@ defmodule HeaderPropagationTest do
   end
 
   test "encode id with root parent span" do
-    trace_id = Tapper.TraceId.generate()
-    span_id = Tapper.SpanId.generate()
-    parent_span_id = :root
+    trace_id = "1ee"
+    span_id = "2ff"
+    parent_span_id = ""
 
     headers = encode({trace_id, span_id, parent_span_id, true, false})
 
-    assert {"x-b3-traceid",Tapper.TraceId.to_hex(trace_id)} in headers
-    assert {"x-b3-spanid",Tapper.SpanId.to_hex(span_id)} in headers
+    assert {"x-b3-traceid","1ee"} in headers
+    assert {"x-b3-spanid","2ff"} in headers
     assert {"x-b3-sampled","1"} in headers
     assert {"x-b3-flags","0"} in headers
     assert not :lists.keymember("x-b3-parentspanid", 1, headers)
   end
 
   test "encode id with non-root parent span" do
-    trace_id = Tapper.TraceId.generate()
-    span_id = Tapper.SpanId.generate()
-    parent_span_id = Tapper.SpanId.generate()
+    trace_id = "1ee"
+    span_id = "2ff"
+    parent_span_id = "0dd"
 
     headers = encode({trace_id, span_id, parent_span_id, false, true})
 
-    assert {"x-b3-traceid",Tapper.TraceId.to_hex(trace_id)} in headers
-    assert {"x-b3-spanid",Tapper.SpanId.to_hex(span_id)} in headers
-    assert {"x-b3-parentspanid",Tapper.SpanId.to_hex(parent_span_id)} in headers
+    assert {"x-b3-traceid","1ee"} in headers
+    assert {"x-b3-spanid","2ff"} in headers
+    assert {"x-b3-parentspanid","0dd"} in headers
     assert {"x-b3-sampled","0"} in headers
     assert {"x-b3-flags","1"} in headers
   end

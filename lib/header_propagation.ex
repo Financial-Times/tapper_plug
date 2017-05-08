@@ -82,19 +82,23 @@ defmodule Tapper.Plug.HeaderPropagation do
     response = HTTPoison.get("http://some.service.com/some/api", headers)
   ```
   """
-  def encode(id = %Tapper.Id{}), do: encode(Tapper.Id.destructure(id))
+  @spec encode(Tapper.Id.t) :: [{String.t, String.t}]
+  def encode(id = %Tapper.Id{}) do
+    encode(Tapper.Id.destructure(id))
+  end
 
-  def encode({trace_id, span_id, parent_span_id, sample, debug}) do
+  @spec encode({String.t, String.t, String.t, boolean(), boolean()}) :: [{String.t, String.t}]
+  def encode({trace_id, span_id, parent_span_id, sample, debug}) when is_binary(trace_id) and is_binary(span_id) and is_binary(parent_span_id) do
     headers = [
-      {@b3_trace_id_header, Tapper.TraceId.to_hex(trace_id)},
-      {@b3_span_id_header, Tapper.SpanId.to_hex(span_id)},
+      {@b3_trace_id_header, trace_id},
+      {@b3_span_id_header, span_id},
       {@b3_sampled_header, if(sample, do: "1", else: "0")},
       {@b3_flags_header, if(debug, do: "1", else: "0")}
     ]
 
     case parent_span_id do
-      :root -> headers
-      parent_span_id -> [{@b3_parent_span_id_header, Tapper.SpanId.to_hex(parent_span_id)} | headers]
+      "" -> headers
+      parent_span_id -> [{@b3_parent_span_id_header, parent_span_id} | headers]
     end
   end
 
