@@ -8,11 +8,24 @@ defmodule TapperPlug.Mixfile do
      description: "Plug integration for Tapper",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
+     package: package(),
+     docs: docs(),
      deps: deps()]
   end
 
   def application do
     [applications: [:logger]]
+  end
+
+  def package do
+    [ maintainers: ["Ellis Pritchard"],
+      licenses: ["MIT"],
+      links: %{"Github" => "https://github.com/Financial-Times/tapper_plug"} ]
+  end
+
+  def docs do
+    [main: "README",
+     extras: ["README.md"]]
   end
 
   # Dependencies can be Hex packages:
