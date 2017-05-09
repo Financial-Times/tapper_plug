@@ -110,7 +110,7 @@ defmodule Tapper.Plug do
     @doc false
     def annotate(id, conn, _config) do
       id
-      |> Tapper.client_address(%Tapper.Endpoint{ipv4: conn.remote_ip, service_name: user_agent(conn)})
+      |> Tapper.client_address(%Tapper.Endpoint{ip: conn.remote_ip, service_name: user_agent(conn)})
       |> Tapper.http_host(conn.host)
       |> Tapper.http_method(conn.method)
       |> Tapper.http_path(conn.request_path)
