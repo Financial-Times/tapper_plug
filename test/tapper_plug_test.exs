@@ -10,116 +10,149 @@ defmodule TapperPlugTest do
     :ok
   end
 
-  test "config sets defaults, and contains custom keys" do
-    config = Tapper.Plug.Trace.init(top: :bottom)
-    assert config[:sampler] == Tapper.Plug.Sampler.Simple
-    assert config[:tapper] == []
-    assert config[:top] == :bottom
+  describe "config" do
+    test "config sets defaults, and contains custom keys" do
+      config = Tapper.Plug.Trace.init(top: :bottom)
+      assert config[:sampler] == Tapper.Plug.Sampler.Simple
+      assert config[:tapper] == []
+      assert config[:top] == :bottom
+    end
+
+    test "config sets sampler and tapper opts, and contains custom keys" do
+      config = Tapper.Plug.Trace.init(sampler: Some.Module, tapper: [something: true], left: :right)
+      assert config[:sampler] == Some.Module
+      assert config[:left] == :right
+      assert config[:tapper] == [something: true]
+    end
   end
 
-  test "config sets sampler and tapper opts, and contains custom keys" do
-    config = Tapper.Plug.Trace.init(sampler: Some.Module, tapper: [something: true], left: :right)
-    assert config[:sampler] == Some.Module
-    assert config[:left] == :right
-    assert config[:tapper] == [something: true]
+  describe "sampling" do
+    test "sampler is called with conn and config" do
+      pid = self()
+      config = Tapper.Plug.Trace.init(sampler: fn(conn, config) ->
+        send(pid, {:sample, conn, config})
+        true
+      end, left: :right)
+
+      assert is_function(config[:sampler],2)
+      assert config[:left] == :right
+
+      conn = conn(:get, "/test")
+
+      _new_conn = Tapper.Plug.Trace.call(conn, config)
+
+      assert_received {:sample, ^conn, ^config}
+    end
+
+    test "id is sampled when no propagated trace, if sampler returns true" do
+      config = Tapper.Plug.Trace.init(sampler: fn(_,_) -> true end)
+
+      conn = conn(:get, "/test")
+
+      new_conn = Tapper.Plug.Trace.call(conn, config)
+
+      id = new_conn.private[:tapper_plug]
+
+      assert Tapper.Id.sampled?(id)
+    end
+
+    test "id is not sampled when no propagated trace, if sampler returns false" do
+      config = Tapper.Plug.Trace.init(sampler: fn(_,_) -> false end)
+
+      conn = conn(:get, "/test")
+
+      new_conn = Tapper.Plug.Trace.call(conn, config)
+
+      id = new_conn.private[:tapper_plug]
+
+      refute Tapper.Id.sampled?(id)
+    end
+
+    test "id remains :ignore if ignoring" do
+      config = Tapper.Plug.Trace.init(sampler: fn(_,_) -> true end)
+
+      conn = conn(:get, "/test")
+      |> Tapper.Plug.store(:ignore)
+
+      new_conn = Tapper.Plug.Trace.call(conn, config)
+
+      id = new_conn.private[:tapper_plug]
+
+      assert id == :ignore
+    end
+
   end
 
-  test "sampler is called with conn and config" do
-    pid = self()
-    config = Tapper.Plug.Trace.init(sampler: fn(conn, config) ->
-      send(pid, {:sample, conn, config})
-      true
-    end, left: :right)
+  describe "header parsing" do
 
-    assert is_function(config[:sampler],2)
-    assert config[:left] == :right
+    test "decodes headers into %Tapper.Id{}" do
+      # see also tests in header_propagation_test.exs
 
-    conn = conn(:get, "/test")
+      config = Tapper.Plug.Trace.init([])
 
-    _new_conn = Tapper.Plug.Trace.call(conn, config)
+      conn = conn(:get, "/test")
+      |> put_req_header("x-b3-traceid", "1fffffff")
+      |> put_req_header("x-b3-parentspanid", "2ffffffff")
+      |> put_req_header("x-b3-spanid", "ffff")
+      |> put_req_header("x-b3-sampled", "1")
 
-    assert_received {:sample, ^conn, ^config}
-  end
+      new_conn = Tapper.Plug.Trace.call(conn, config)
 
-  test "id is sampled when no propagated trace, if sampler returns true" do
-    config = Tapper.Plug.Trace.init(sampler: fn(_,_) -> true end)
+      id = new_conn.private[:tapper_plug]
 
-    conn = conn(:get, "/test")
+      {trace_id_hex, span_id_hex, parent_id_hex, sampled_flag, debug_flag} = Tapper.Id.destructure(id)
 
-    new_conn = Tapper.Plug.Trace.call(conn, config)
+      assert String.to_integer(trace_id_hex, 16) === 0x1fffffff
+      assert String.to_integer(span_id_hex, 16) === 0xffff
+      assert String.to_integer(parent_id_hex, 16) === 0x2ffffffff
+      assert sampled_flag == true
+      assert debug_flag == false
+    end
 
-    id = new_conn.private[:tapper_plug]
+    test "id is sampled when propagated trace is sampled" do
+      pid = self()
+      config = Tapper.Plug.Trace.init(sampler: fn(_,_) ->
+        send(pid, :sample)
+        false
+      end)
 
-    assert match?(%Tapper.Id{sampled: true}, id)
-  end
+      conn = conn(:get, "/test")
+      |> put_req_header("x-b3-traceid", "1fffffff")
+      |> put_req_header("x-b3-parentspanid", "2ffffffff")
+      |> put_req_header("x-b3-spanid", "ffff")
+      |> put_req_header("x-b3-sampled", "1")
 
-  test "id is not sampled when no propagated trace, if sampler returns false" do
-    config = Tapper.Plug.Trace.init(sampler: fn(_,_) -> false end)
+      new_conn = Tapper.Plug.Trace.call(conn, config)
 
-    conn = conn(:get, "/test")
+      id = new_conn.private[:tapper_plug]
 
-    new_conn = Tapper.Plug.Trace.call(conn, config)
+      assert Tapper.Id.sampled?(id)
 
-    id = new_conn.private[:tapper_plug]
+      refute_received :sample
+    end
 
-    assert match?(%Tapper.Id{sampled: false}, id)
-  end
+    test "id is not sampled when propagated trace is not sampled" do
+      pid = self()
+      config = Tapper.Plug.Trace.init(sampler: fn(_,_) ->
+        send(pid, :sample)
+        false
+      end)
 
-  test "id remains :ignore if ignoring" do
-    config = Tapper.Plug.Trace.init(sampler: fn(_,_) -> true end)
+      conn = conn(:get, "/test")
+      |> put_req_header("x-b3-traceid", "1fffffff")
+      |> put_req_header("x-b3-parentspanid", "2ffffffff")
+      |> put_req_header("x-b3-spanid", "ffff")
+      |> put_req_header("x-b3-sampled", "0")
 
-    conn = conn(:get, "/test")
-    |> Tapper.Plug.store(:ignore)
+      new_conn = Tapper.Plug.Trace.call(conn, config)
 
-    new_conn = Tapper.Plug.Trace.call(conn, config)
+      id = new_conn.private[:tapper_plug]
 
-    id = new_conn.private[:tapper_plug]
+      refute Tapper.Id.sampled?(id)
 
-    assert id == :ignore
-  end
+      refute_received :sample
+    end
 
-  test "id is sampled when propagated trace is sampled" do
-    pid = self()
-    config = Tapper.Plug.Trace.init(sampler: fn(_,_) ->
-      send(pid, :sample)
-      false
-    end)
-
-    conn = conn(:get, "/test")
-    |> put_req_header("x-b3-traceid", "1fffffff")
-    |> put_req_header("x-b3-parentspanid", "2ffffffff")
-    |> put_req_header("x-b3-spanid", "ffff")
-    |> put_req_header("x-b3-sampled", "1")
-
-    new_conn = Tapper.Plug.Trace.call(conn, config)
-
-    id = new_conn.private[:tapper_plug]
-
-    assert match?(%Tapper.Id{trace_id: {0x1fffffff, _}, span_id: 0xffff, origin_parent_id: 0x2ffffffff, parent_ids: [], sampled: true}, id)
-
-    refute_received :sample
-  end
-
-  test "id is not sampled when propagated trace is not sampled" do
-    pid = self()
-    config = Tapper.Plug.Trace.init(sampler: fn(_,_) ->
-      send(pid, :sample)
-      false
-    end)
-
-    conn = conn(:get, "/test")
-    |> put_req_header("x-b3-traceid", "1fffffff")
-    |> put_req_header("x-b3-parentspanid", "2ffffffff")
-    |> put_req_header("x-b3-spanid", "ffff")
-    |> put_req_header("x-b3-sampled", "0")
-
-    new_conn = Tapper.Plug.Trace.call(conn, config)
-
-    id = new_conn.private[:tapper_plug]
-
-    assert match?(%Tapper.Id{trace_id: {0x1fffffff, _}, span_id: 0xffff, origin_parent_id: 0x2ffffffff, parent_ids: [], sampled: false}, id)
-
-    refute_received :sample
   end
 
   test "finishing trace" do
@@ -131,12 +164,13 @@ defmodule TapperPlugTest do
     |> put_req_header("x-b3-parentspanid", "2ffffffff")
     |> put_req_header("x-b3-spanid", "ffff")
     |> put_req_header("x-b3-sampled", "1")
+    |> put_req_header("user-agent", "the-ua")
 
     conn = Tapper.Plug.Trace.call(conn, config)
 
     id = conn.private[:tapper_plug]
 
-    assert match?(%Tapper.Id{trace_id: {0x1fffffff, _}, span_id: 0xffff, origin_parent_id: 0x2ffffffff, parent_ids: [], sampled: true}, id)
+    assert Tapper.Id.sampled?(id)
 
     assert length(conn.before_send) == 1
 
@@ -149,11 +183,23 @@ defmodule TapperPlugTest do
     assert has_annotation?(hd(spans), :sr)
     assert has_annotation?(hd(spans), :ss)
 
+    assert has_binary_annotation?(hd(spans), "ca", true)
+    assert binary_annotation(hd(spans), "ca").host.service_name == "the-ua"
     assert has_binary_annotation?(hd(spans), "http.path", "/test")
     assert has_binary_annotation?(hd(spans), "http.method", "GET")
     assert has_binary_annotation?(hd(spans), "http.host", "test-host")
 
     assert has_binary_annotation?(hd(spans), "http.status_code", 200)
+  end
+
+  test "user_agent/1" do
+    conn = conn("GET", "/foo")
+
+    assert Tapper.Plug.Trace.user_agent(conn) == "unknown"
+
+    conn = put_req_header(conn, "user-agent", "my-svc")
+
+    assert Tapper.Plug.Trace.user_agent(conn) == "my-svc"
   end
 
   defp run_before_send(%Plug.Conn{before_send: before_send} = conn, new) do
@@ -172,5 +218,8 @@ defmodule TapperPlugTest do
     Enum.any?(annotations, fn(an) -> an.key == key and an.value == value end)
   end
 
+  defp binary_annotation(%Tapper.Protocol.Span{binary_annotations: annotations}, key) do
+    Enum.find(annotations, fn(an) -> an.key == key end)
+  end
 
 end
