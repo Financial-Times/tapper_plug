@@ -43,7 +43,7 @@ defmodule TapperPlug.Mixfile do
       {:plug, "~> 1.0"},
       {:credo, "~> 0.5", only: [:dev, :test]},
       {:mix_test_watch, "~> 0.3", only: :dev, runtime: false},
-      {:ex_doc, "~> 0.14", only: :dev, runtime: false},
+      {:ex_doc, "~> 0.15", only: :dev, runtime: false},
       {:dialyxir, "~> 0.5.0", only: [:dev]}
     ]
   end

@@ -2,8 +2,8 @@ defmodule Tapper.Plug do
   @moduledoc """
   [Plug](https://github.com/elixir-lang/plug) integration for [Tapper](https://github.com/Financial-Times/tapper).
 
-     * `Tapper.Plug.Trace` - intercepts [B3](https://github.com/openzipkin/b3-propagation) headers and joins or samples trace.
-     * `Tapper.Plug.Filter` - disables tracing entirely for matching URLs.
+  * `Tapper.Plug.Trace` - intercepts [B3](https://github.com/openzipkin/b3-propagation) headers and joins or samples trace.
+  * `Tapper.Plug.Filter` - disables tracing entirely for matching URLs.
   """
 
   import Plug.Conn
@@ -36,12 +36,12 @@ defmodule Tapper.Plug do
     plug Tapper.Plug.Trace, sampler: fn(conn, _config) -> String.starts_with?(conn.request_path, ["/foo", "/bar"]) end
     ```
 
-        ## Options
+    ## Options
 
-       * `sampler` - name of module with `sample?/2`, or a fun with arity 2, to call to determine whether to sample a request; see `Tapper.Plug.Sampler`.
-       * `debug` - if set to `true` all requests, joined or started, will be sampled.
-       * `tapper` - keyword list passed on to `Tapper.start/1` or `Tapper.join/6`
-       (useful for testing/debugging, but use with caution since overrides options set by this module).
+    * `sampler` - name of module with `sample?/2`, or a fun with arity 2, to call to determine whether to sample a request; see `Tapper.Plug.Sampler`.
+    * `debug` - if set to `true` all requests, joined or started, will be sampled.
+    * `tapper` - keyword list passed on to `Tapper.start/1` or `Tapper.join/6`
+    (useful for testing/debugging, but use with caution since overrides options set by this module).
 
     Other options will be passed to the sampler function, which allows you to configure it here too.
     """

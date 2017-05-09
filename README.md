@@ -1,4 +1,4 @@
-# TapperPlug
+# Tapper.Plug
 
 [Plug](https://github.com/elixir-lang/plug) integration for the [Tapper](https://github.com/Financial-Times/tapper) Zipkin client.
 
@@ -42,7 +42,7 @@ the top-level trace.
 
 * [Tapper.Plug.Absinthe](https://github.com/Financial-Times/tapper_absinthe_plug) - propagate Tapper Id to [Absinthe](http://absinthe-graphql.org/) resolvers.
 
-## Filtering with `Tapper.Plug.Filter`
+## Filtering with Tapper.Plug.Filter
 
 This filter takes a list of URL path prefixes to be excluded from sampling, even if a sampled or debug B3 header is sent.
 
