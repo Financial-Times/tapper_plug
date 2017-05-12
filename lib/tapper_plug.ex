@@ -110,7 +110,7 @@ defmodule Tapper.Plug do
     @doc false
     def annotate(id, conn, _config) do
       id
-      |> Tapper.client_address(%Tapper.Endpoint{ip: conn.remote_ip, service_name: user_agent(conn)})
+      |> Tapper.client_address(%Tapper.Endpoint{ip: conn.remote_ip})
       |> Tapper.http_host(conn.host)
       |> Tapper.http_method(conn.method)
       |> Tapper.http_path(conn.request_path)
@@ -124,12 +124,6 @@ defmodule Tapper.Plug do
       end
     end
 
-    def user_agent(%Plug.Conn{req_headers: headers}) do
-      case :lists.keyfind("user-agent", 1, headers) do
-        {_header, value} -> String.slice(value, 0..100)
-        false -> "unknown"
-      end
-    end
   end
 
   defmodule Trace.Finish do

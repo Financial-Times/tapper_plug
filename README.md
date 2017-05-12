@@ -18,7 +18,7 @@ plug Myapp.Web.Router  # standard Phoenix router etc.
 ```
 
 1. you can exclude certain URLs for the purposes of tracing using the optional `Tapper.Plug.Filter`.
-2. install the `Tapper.Plug.Trace` plug as soon as possible in the plug list, for accuracy. This plug reads any incoming B3 style headers, and either joins the incoming span, or starts a new one (dependent on result of sampling), adding a 'server receive' annotation, and various other binary annotations with incoming request details.
+2. install the `Tapper.Plug.Trace` plug as soon as possible in the plug list, for accuracy. This plug reads any incoming [B3](https://github.com/openzipkin/b3-propagation) style headers, and either joins the incoming span, or starts a new one (dependent on result of sampling), adding a 'server receive' annotation, and various other binary annotations with incoming request details.
 
 ## Obtaining the Trace Id in Request Handlers
 

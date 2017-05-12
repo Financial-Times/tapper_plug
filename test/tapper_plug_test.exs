@@ -184,22 +184,11 @@ defmodule TapperPlugTest do
     assert has_annotation?(hd(spans), :ss)
 
     assert has_binary_annotation?(hd(spans), "ca", true)
-    assert binary_annotation(hd(spans), "ca").host.service_name == "the-ua"
     assert has_binary_annotation?(hd(spans), "http.path", "/test")
     assert has_binary_annotation?(hd(spans), "http.method", "GET")
     assert has_binary_annotation?(hd(spans), "http.host", "test-host")
 
     assert has_binary_annotation?(hd(spans), "http.status_code", 200)
-  end
-
-  test "user_agent/1" do
-    conn = conn("GET", "/foo")
-
-    assert Tapper.Plug.Trace.user_agent(conn) == "unknown"
-
-    conn = put_req_header(conn, "user-agent", "my-svc")
-
-    assert Tapper.Plug.Trace.user_agent(conn) == "my-svc"
   end
 
   defp run_before_send(%Plug.Conn{before_send: before_send} = conn, new) do
