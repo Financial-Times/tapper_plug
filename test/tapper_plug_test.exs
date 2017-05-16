@@ -183,7 +183,7 @@ defmodule TapperPlugTest do
     assert has_annotation?(hd(spans), :sr)
     assert has_annotation?(hd(spans), :ss)
 
-    assert has_binary_annotation?(hd(spans), "ca", true)
+    assert has_binary_annotation?(hd(spans), :ca, true)
     assert has_binary_annotation?(hd(spans), "http.path", "/test")
     assert has_binary_annotation?(hd(spans), "http.method", "GET")
     assert has_binary_annotation?(hd(spans), "http.host", "test-host")

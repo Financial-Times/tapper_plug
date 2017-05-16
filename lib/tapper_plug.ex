@@ -85,11 +85,13 @@ defmodule Tapper.Plug do
     end
 
     def join(conn, config, trace_id, span_id, parent_id, sample, debug) do
-      tapper_opts = Keyword.merge([type: :server], config[:tapper])
+      tapper_opts = Keyword.merge([
+          type: :server,
+          annotations: annotations(conn, config)
+        ],
+        config[:tapper])
 
       id = Tapper.join(trace_id, span_id, parent_id, sample, debug || config[:debug], tapper_opts)
-
-      annotate(id, conn, config)
 
       Tapper.Plug.store(conn, id)
     end
@@ -98,22 +100,29 @@ defmodule Tapper.Plug do
     def start(conn, config) do
       sample = sample_request(conn, config)
 
-      tapper_opts = Keyword.merge([type: :server, sample: sample, debug: config[:debug]], config[:tapper])
+      tapper_opts = Keyword.merge(
+        [
+          type: :server,
+          sample: sample,
+          debug: config[:debug],
+          annotations: annotations(conn, config)
+        ],
+        config[:tapper]
+      )
 
       id = Tapper.start(tapper_opts)
-
-      annotate(id, conn, config)
 
       Tapper.Plug.store(conn, id)
     end
 
     @doc false
-    def annotate(id, conn, _config) do
-      id
-      |> Tapper.client_address(%Tapper.Endpoint{ip: conn.remote_ip})
-      |> Tapper.http_host(conn.host)
-      |> Tapper.http_method(conn.method)
-      |> Tapper.http_path(conn.request_path)
+    def annotations(conn, _config) do
+      [
+        Tapper.client_address(%Tapper.Endpoint{ip: conn.remote_ip}),
+        Tapper.http_host(conn.host),
+        Tapper.http_method(conn.method),
+        Tapper.http_path(conn.request_path)
+      ]
     end
 
     @doc false
@@ -138,10 +147,10 @@ defmodule Tapper.Plug do
     def annotate(conn) do
       id = Tapper.Plug.fetch(conn)
 
-      id
-      |> Tapper.server_send()
-      |> Tapper.http_status_code(conn.status)
-      |> Tapper.finish()
+      Tapper.finish(id, annotations: [
+        Tapper.server_send(),
+        Tapper.http_status_code(conn.status),
+      ])
 
       conn
     end
