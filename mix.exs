@@ -43,7 +43,7 @@ defmodule TapperPlug.Mixfile do
   # Type "mix help deps" for more examples and options
   defp deps do
     [
-      {:tapper, git: "https://github.com/Financial-Times/tapper.git", branch: "annotation-refactor"},
+      {:tapper, git: "https://github.com/Financial-Times/tapper.git"},
       {:plug, "~> 1.0"},
       {:credo, "~> 0.5", only: [:dev, :test]},
       {:mix_test_watch, "~> 0.3", only: :dev, runtime: false},
