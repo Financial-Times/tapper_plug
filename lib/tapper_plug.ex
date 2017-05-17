@@ -51,7 +51,7 @@ defmodule Tapper.Plug do
     * `sr` - server receive on starting or joining a trace.
     * `ca` - client address, from `conn.remote_ip`.
     * `http.host`, `http.method`, `http.path` - from corresponding `Plug.Conn` fields.
-    * ``ss` - server send when finishing a trace.
+    * `ss` - server send when finishing a trace.
     """
 
     @behaviour Plug
