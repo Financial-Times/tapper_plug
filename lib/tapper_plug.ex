@@ -23,10 +23,11 @@ defmodule Tapper.Plug do
 
   defmodule Trace do
     @moduledoc """
-    Intercept [B3](https://github.com/openzipkin/b3-propagation) headers and join a trace, or run a sampler to determine whether to start a new trace.
+    Intercept [B3](https://github.com/openzipkin/b3-propagation) headers and join a sampled trace, or run a sampler to determine whether to start a new trace.
 
-    If starting a trace, a 'server receive' (sr) annotation will be added to the root span, as well
-    as details about the request.
+    If starting a trace, a 'server receive' (`sr`) annotation will be added to the root span, as well
+    as details about the request. A call-back is installed to finish the trace at the end of the request,
+    adding additional `http.status_code` and a 'server send' (`ss`) annotations.
 
     ```
     plug Tapper.Plug.Trace, sampler: Tapper.Plug.Sampler.Simple, percent: 25
@@ -40,11 +41,19 @@ defmodule Tapper.Plug do
 
     * `sampler` - name of module with `sample?/2`, or a fun with arity 2, to call to determine whether to sample a request; see `Tapper.Plug.Sampler`.
     * `debug` - if set to `true` all requests, joined or started, will be sampled.
-    * `tapper` - keyword list passed on to `Tapper.start/1` or `Tapper.join/6`
-    (useful for testing/debugging, but use with caution since overrides options set by this module).
+    * `tapper` - keyword list passed on to `Tapper.start/1` or `Tapper.join/6` (useful for testing/debugging, but use with caution
+      since overrides options set by this module).
 
-    Other options will be passed to the sampler function, which allows you to configure it here too.
+    All options, including custom ones, will be passed to the `sampler` function (as a map), which means it can be configured here too.
+
+    ## Annotations
+    `Tapper.Plug` sets the following annotations:
+    * `sr` - server receive on starting or joining a trace.
+    * `ca` - client address, from `conn.remote_ip`.
+    * `http.host`, `http.method`, `http.path` - from corresponding `Plug.Conn` fields.
+    * ``ss` - server send when finishing a trace.
     """
+
     @behaviour Plug
 
     def init(opts) do
