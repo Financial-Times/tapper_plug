@@ -5,10 +5,11 @@ defmodule TapperPlug.Mixfile do
     [app: :tapper_plug,
      version: "0.1.0",
      elixir: "~> 1.4",
-     description: "Plug integration for Tapper",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
+     name: "Tapper Plug",
      source_url: "https://github.com/Financial-Times/tapper_plug",
+     description: "Plug integration for Tapper.",
      package: package(),
      docs: docs(),
      deps: deps()]
@@ -20,7 +21,6 @@ defmodule TapperPlug.Mixfile do
 
   def package do
     [
-      files: ["lib", "mix.exs", "README.md"],
       maintainers: ["Ellis Pritchard"],
       licenses: ["MIT"],
       links: %{"Github" => "https://github.com/Financial-Times/tapper_plug"}
@@ -28,7 +28,7 @@ defmodule TapperPlug.Mixfile do
   end
 
   def docs do
-    [main: "README",
+    [main: "readme",
      extras: ["README.md"]]
   end
 
@@ -43,12 +43,13 @@ defmodule TapperPlug.Mixfile do
   # Type "mix help deps" for more examples and options
   defp deps do
     [
-      {:tapper, git: "https://github.com/Financial-Times/tapper.git"},
+      {:tapper, "~> 0.1"},
       {:plug, "~> 1.0"},
       {:credo, "~> 0.5", only: [:dev, :test]},
       {:mix_test_watch, "~> 0.3", only: :dev, runtime: false},
       {:ex_doc, "~> 0.15", only: :dev, runtime: false},
-      {:dialyxir, "~> 0.5.0", only: [:dev]}
+      {:dialyxir, "~> 0.5.0", only: [:dev]},
+      {:inch_ex, ">= 0.0.0", only: :docs}
     ]
   end
 end
