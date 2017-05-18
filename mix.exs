@@ -3,7 +3,7 @@ defmodule TapperPlug.Mixfile do
 
   def project do
     [app: :tapper_plug,
-     version: "0.2.0-rc",
+     version: "0.2.0",
      elixir: "~> 1.4",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
@@ -44,8 +44,8 @@ defmodule TapperPlug.Mixfile do
   # Type "mix help deps" for more examples and options
   defp deps do
     [
-      # {:tapper, "~> 0.1"},
-      {:tapper, github: "Financial-Times/tapper"},
+      {:tapper, "~> 0.2"},
+      # {:tapper, github: "Financial-Times/tapper"},
       {:plug, "~> 1.0"},
       {:credo, "~> 0.5", only: [:dev, :test]},
       {:mix_test_watch, "~> 0.3", only: :dev, runtime: false},
