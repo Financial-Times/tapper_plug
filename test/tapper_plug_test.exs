@@ -207,8 +207,4 @@ defmodule TapperPlugTest do
     Enum.any?(annotations, fn(an) -> an.key == key and an.value == value end)
   end
 
-  defp binary_annotation(%Tapper.Protocol.Span{binary_annotations: annotations}, key) do
-    Enum.find(annotations, fn(an) -> an.key == key end)
-  end
-
 end

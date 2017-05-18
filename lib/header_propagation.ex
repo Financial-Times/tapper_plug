@@ -82,12 +82,11 @@ defmodule Tapper.Plug.HeaderPropagation do
     response = HTTPoison.get("http://some.service.com/some/api", headers)
   ```
   """
-  @spec encode(Tapper.Id.t) :: [{String.t, String.t}]
+  @spec encode(Tapper.Id.t | {String.t, String.t, String.t, boolean(), boolean()}) :: [{String.t, String.t}]
   def encode(id = %Tapper.Id{}) do
     encode(Tapper.Id.destructure(id))
   end
 
-  @spec encode({String.t, String.t, String.t, boolean(), boolean()}) :: [{String.t, String.t}]
   def encode({trace_id, span_id, parent_span_id, sample, debug}) when is_binary(trace_id) and is_binary(span_id) and is_binary(parent_span_id) do
     headers = [
       {@b3_trace_id_header, trace_id},
