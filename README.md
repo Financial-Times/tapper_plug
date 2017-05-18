@@ -119,11 +119,11 @@ For release versions, the package can be installed by adding `tapper_plug` to yo
 
 ```elixir
 def deps do
-  [{:tapper_plug, "~> 0.1.0"}]
+  [{:tapper_plug, "~> 0.2.0"}]
 end
 ```
 
-Add the `:tapper` and `:tapper_plug` applications to your mix project's applications to ensure they are included in OTP applications:
+Ensure the `:tapper` application is present in your mix project's applications:
 
 ```elixir
   # Configuration for the OTP application.
@@ -132,7 +132,7 @@ Add the `:tapper` and `:tapper_plug` applications to your mix project's applicat
   def application do
     [
       mod: {MyApp, []},
-      applications: [:tapper, :tapper_plug]
+      applications: [:tapper]
     ]
   end
 ```
