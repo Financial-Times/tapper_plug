@@ -133,6 +133,12 @@ defmodule HeaderPropagationTest do
       assert {"x-b3-flags","1"} in headers
     end
 
+    test "encode :ignore" do
+      headers = encode(:ignore)
+
+      assert headers == []
+    end
+
   end
 
 end

@@ -101,4 +101,6 @@ defmodule Tapper.Plug.HeaderPropagation do
     end
   end
 
+  def encode(:ignore), do: []
+
 end
