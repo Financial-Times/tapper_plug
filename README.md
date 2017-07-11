@@ -111,7 +111,7 @@ For the latest pre-release (and unstable) code, add the github repo to your mix 
 
 ```elixir
 def deps do
-  [{:tapper_plug, git: "https://github.com/Financial-Times/tapper_plug"}]
+  [{:tapper_plug, github: "Financial-Times/tapper_plug"}]
 end
 ```
 
@@ -119,7 +119,7 @@ For release versions, the package can be installed by adding `tapper_plug` to yo
 
 ```elixir
 def deps do
-  [{:tapper_plug, "~> 0.2.0"}]
+  [{:tapper_plug, "~> 0.2"}]
 end
 ```
 
