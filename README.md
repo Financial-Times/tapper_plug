@@ -30,7 +30,7 @@ The API documentation can be found at [https://hexdocs.pm/tapper_plug](https://h
 
 ## Obtaining the Trace Id in Request Handlers
 
-You can retrieve the Tapper Id from the `%Plug.Conn{}` using the `Tapper.Plug.get/1` function, and then use it to start child spans etc.:
+You can retrieve the Tapper Id from the `%Plug.Conn{}` using the `Tapper.Plug.fetch/1` function, and then use it to start child spans etc.:
 
 ```elixir
 id = Tapper.Plug.fetch(conn) # get top-level span id
