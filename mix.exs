@@ -47,9 +47,9 @@ defmodule TapperPlug.Mixfile do
       {:tapper, "~> 0.2"},
       # {:tapper, github: "Financial-Times/tapper"},
       {:plug, "~> 1.0"},
-      {:credo, "~> 0.5", only: [:dev, :test]},
-      {:mix_test_watch, "~> 0.3", only: :dev, runtime: false},
-      {:ex_doc, "~> 0.15", only: :dev, runtime: false},
+      {:credo, "~> 0.8", only: [:dev, :test]},
+      {:mix_test_watch, "~> 0.5", only: :dev, runtime: false},
+      {:ex_doc, "~> 0.18", only: :dev, runtime: false},
       {:dialyxir, "~> 0.5", only: [:dev]},
       {:inch_ex, ">= 0.0.0", only: :docs}
     ]
