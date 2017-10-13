@@ -39,8 +39,13 @@ defmodule Tapper.Plug do
 
     ## Options
 
-    * `sampler` - name of module with `sample?/2`, or a fun with arity 2, to call to determine whether to sample a request; see `Tapper.Plug.Sampler`.
-    * `debug` - if set to `true` all requests, joined or started, will be sampled.
+    * `sampler` - name of module with `sample?/2`, or a fun with arity 2, to call to determine whether to sample a request;
+    see `Tapper.Plug.Sampler`.
+    * `sampled_absent_policy` - by default, when `X-B3-Sampled` is absent, and debug is not enabled (by B3 header
+     or otherwise), the sampler will be used to determine if the trace should be sampled; use a value of `:pass_thru` here to preserve
+     the absence of the flag: the trace will then not be sampled unless `X-B3-Flags` is 1, or `debug` option is true, and
+     destructuring the `Tapper.Id` will yield `:absent` for the sample field.
+    * `debug` - if set to `true` all requests, joined or started, will be sampled as if `X-B3-Flags` was set to 1.
     * `tapper` - keyword list passed on to `Tapper.start/1` or `Tapper.join/6` (useful for testing/debugging, but use with caution
       since overrides options set by this module).
 
@@ -59,10 +64,11 @@ defmodule Tapper.Plug do
     def init(opts) do
       config = %{
         sampler: Keyword.get(opts, :sampler, Tapper.Plug.Sampler.Simple),
+        sampled_absent_policy: Keyword.get(opts, :sampled_absent_policy, :sample),
         debug: Keyword.get(opts, :debug, false),
         tapper: Keyword.get(opts, :tapper, [])
       }
-      Enum.into(Keyword.drop(opts, [:sampler, :debug, :tapper]), config)
+      Enum.into(Keyword.drop(opts, [:sampler, :sampled_absent_policy, :debug, :tapper]), config)
     end
 
     def call(conn = %Plug.Conn{private: %{tapper_plug: :ignore}}, _), do: conn
@@ -81,19 +87,28 @@ defmodule Tapper.Plug do
 
     end
 
-    @doc "join a trace, running the sampler if 'sampled' not expicitly sent"
+    @doc "join a trace, running the sampler if 'sampled' not expicitly sent (unless we're passing `:absent` through)."
     def join(conn, config, trace_id, span_id, parent_id, sample, debug)
 
-    def join(conn, config, trace_id, span_id, parent_id, :absent, true) do
-      join(conn, config, trace_id, span_id, parent_id, false, true)
+    def join(conn, config, trace_id, span_id, parent_id, sample, true) do
+      do_join(conn, config, trace_id, span_id, parent_id, sample, true)
+    end
+
+    def join(conn, config = %{sampled_absent_policy: :pass_thru}, trace_id, span_id, parent_id, :absent, false) do
+      do_join(conn, config, trace_id, span_id, parent_id, :absent, false)
     end
 
     def join(conn, config, trace_id, span_id, parent_id, :absent, false) do
       sample = sample_request(conn, config)
-      join(conn, config, trace_id, span_id, parent_id, sample, false)
+      do_join(conn, config, trace_id, span_id, parent_id, sample, false)
     end
 
     def join(conn, config, trace_id, span_id, parent_id, sample, debug) do
+      do_join(conn, config, trace_id, span_id, parent_id, sample, debug)
+    end
+
+    @doc false
+    def do_join(conn, config, trace_id, span_id, parent_id, sample, debug) do
       tapper_opts = Keyword.merge([
           type: :server,
           annotations: annotations(conn, config)

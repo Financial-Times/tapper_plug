@@ -61,7 +61,7 @@ defmodule Tapper.Plug.HeaderPropagation do
       {:join, trace_id, span_id, parent_span_id, sample, debug}
     else
       nil ->
-        Logger.debug("No B3 headers (or incomplete ones)")
+        Logger.debug(fn -> "No B3 headers (or incomplete ones)" end)
         :start
       :error ->
         Logger.info(fn -> "Bad B3 headers #{inspect headers}" end)
