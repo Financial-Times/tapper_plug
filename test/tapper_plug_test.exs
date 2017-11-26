@@ -14,15 +14,25 @@ defmodule TapperPlugTest do
     test "config sets defaults, and contains custom keys" do
       config = Tapper.Plug.Trace.init(top: :bottom)
       assert config[:sampler] == Tapper.Plug.Sampler.Simple
+      assert config[:debug] == false
       assert config[:tapper] == []
       assert config[:top] == :bottom
     end
 
     test "config sets sampler and tapper opts, and contains custom keys" do
-      config = Tapper.Plug.Trace.init(sampler: Some.Module, tapper: [something: true], left: :right)
+      config = Tapper.Plug.Trace.init(debug: true, sampler: Some.Module, tapper: [something: true], path_redactor: {Mod, :fun, [1]}, left: :right)
       assert config[:sampler] == Some.Module
-      assert config[:left] == :right
+      assert config[:debug] == true
       assert config[:tapper] == [something: true]
+      assert config[:path_redactor] == {Mod, :fun, [1]}
+      assert config[:left] == :right
+    end
+
+    test "debug can be set via Application config" do
+      Application.put_env(:tapper_plug, :debug, true)
+      config = Tapper.Plug.Trace.init([])
+      assert config[:debug] == true
+      Application.put_env(:tapper_plug, :debug, false)
     end
   end
 
@@ -155,40 +165,133 @@ defmodule TapperPlugTest do
 
   end
 
-  test "finishing trace" do
-    pid = self()
-    config = Tapper.Plug.Trace.init(tapper: [reporter: fn(spans) -> send(pid, {:spans, spans}) end])
+  describe "finishing trace" do
+    test "sets expected annotations on joined trace" do
+      pid = self()
+      config = Tapper.Plug.Trace.init(tapper: [reporter: fn(spans) -> send(pid, {:spans, spans}) end])
 
-    conn = conn(:get, "http://test-host/test")
-    |> put_req_header("x-b3-traceid", "1fffffff")
-    |> put_req_header("x-b3-parentspanid", "2ffffffff")
-    |> put_req_header("x-b3-spanid", "ffff")
-    |> put_req_header("x-b3-sampled", "1")
-    |> put_req_header("user-agent", "the-ua")
+      conn = conn(:get, "http://test-host/test")
+      |> put_req_header("x-b3-traceid", "1fffffff")
+      |> put_req_header("x-b3-parentspanid", "2ffffffff")
+      |> put_req_header("x-b3-spanid", "ffff")
+      |> put_req_header("x-b3-sampled", "1")
+      |> put_req_header("user-agent", "the-ua")
 
-    conn = Tapper.Plug.Trace.call(conn, config)
+      conn = Tapper.Plug.Trace.call(conn, config)
 
-    id = conn.private[:tapper_plug]
+      id = conn.private[:tapper_plug]
 
-    assert Tapper.Id.sampled?(id)
+      assert Tapper.Id.sampled?(id)
 
-    assert length(conn.before_send) == 1
+      assert length(conn.before_send) == 1
 
-    conn = Plug.Conn.resp(conn, 200, "Body")
-    run_before_send(conn, :set) # Plug.Test doesn't support before_send (yet)
-    _conn = Plug.Conn.send_resp(conn)
+      conn = Plug.Conn.resp(conn, 200, "Body")
+      run_before_send(conn, :set) # Plug.Test doesn't support before_send (yet)
+      _conn = Plug.Conn.send_resp(conn)
 
-    assert_receive {:spans, spans}
+      assert_receive {:spans, spans}
 
-    assert has_annotation?(hd(spans), :sr)
-    assert has_annotation?(hd(spans), :ss)
+      span = hd(spans)
 
-    assert has_binary_annotation?(hd(spans), :ca, true)
-    assert has_binary_annotation?(hd(spans), "http.path", "/test")
-    assert has_binary_annotation?(hd(spans), "http.method", "GET")
-    assert has_binary_annotation?(hd(spans), "http.host", "test-host")
+      assert span.name == "unknown" # doesn't set name on joined span
 
-    assert has_binary_annotation?(hd(spans), "http.status_code", 200)
+      assert has_annotation?(span, :sr)
+      assert has_annotation?(span, :ss)
+
+      assert has_binary_annotation?(span, :ca, true)
+      assert has_binary_annotation?(span, "http.path", "/test")
+      assert has_binary_annotation?(span, "http.method", "GET")
+      assert has_binary_annotation?(span, "http.host", "test-host")
+
+      assert has_binary_annotation?(span, "http.status_code", 200)
+    end
+
+    test "sets expected annotations on started trace" do
+      pid = self()
+      config = Tapper.Plug.Trace.init(sampler: fn _,_ -> true end, tapper: [reporter: fn(spans) -> send(pid, {:spans, spans}) end])
+
+      conn = conn(:get, "http://test-host/test")
+
+      conn = Tapper.Plug.Trace.call(conn, config)
+
+      id = conn.private[:tapper_plug]
+
+      assert Tapper.Id.sampled?(id)
+
+      assert length(conn.before_send) == 1
+
+      conn = Plug.Conn.resp(conn, 200, "Body")
+      run_before_send(conn, :set) # Plug.Test doesn't support before_send (yet)
+      _conn = Plug.Conn.send_resp(conn)
+
+      assert_receive {:spans, spans}
+
+      span = hd(spans)
+
+      assert span.name == "GET " <> conn.request_path
+
+      assert has_annotation?(span, :sr)
+      assert has_annotation?(span, :ss)
+
+      assert has_binary_annotation?(span, :ca, true)
+      assert has_binary_annotation?(span, "http.path", conn.request_path)
+      assert has_binary_annotation?(span, "http.method", "GET")
+      assert has_binary_annotation?(span, "http.host", "test-host")
+
+      assert has_binary_annotation?(span, "http.status_code", 200)
+    end
+  end
+
+  describe "redaction" do
+
+    defmodule Redactor do
+      def redact(s, :x), do: "****"
+    end
+
+    test "redacts path in started trace name and annotation" do
+      pid = self()
+      config = Tapper.Plug.Trace.init(path_redactor: {Redactor, :redact, [:x]}, tapper: [reporter: fn(spans) -> send(pid, {:spans, spans}) end], sampler: fn _,_ -> true end)
+
+      conn = conn(:get, "http://test-host/test")
+
+      conn = Tapper.Plug.Trace.call(conn, config)
+
+      conn = Plug.Conn.resp(conn, 200, "Body")
+      run_before_send(conn, :set) # Plug.Test doesn't support before_send (yet)
+      _conn = Plug.Conn.send_resp(conn)
+
+      assert_receive {:spans, spans}
+
+      span = hd(spans)
+
+      assert span.name == "GET ****"
+      assert has_binary_annotation?(hd(spans), "http.path", "****")
+    end
+
+    test "redacts path in joined trace annotation" do
+      pid = self()
+      config = Tapper.Plug.Trace.init(path_redactor: {Redactor, :redact, [:x]}, tapper: [reporter: fn(spans) -> send(pid, {:spans, spans}) end])
+
+      conn = conn(:get, "http://test-host/test")
+      |> put_req_header("x-b3-traceid", "1fffffff")
+      |> put_req_header("x-b3-parentspanid", "2ffffffff")
+      |> put_req_header("x-b3-spanid", "ffff")
+      |> put_req_header("x-b3-sampled", "1")
+
+      conn = Tapper.Plug.Trace.call(conn, config)
+
+      conn = Plug.Conn.resp(conn, 200, "Body")
+      run_before_send(conn, :set) # Plug.Test doesn't support before_send (yet)
+      _conn = Plug.Conn.send_resp(conn)
+
+      assert_receive {:spans, spans}
+
+      span = hd(spans)
+
+      assert span.name == "unknown"
+      assert has_binary_annotation?(hd(spans), "http.path", "****")
+    end
+
   end
 
   defp run_before_send(%Plug.Conn{before_send: before_send} = conn, new) do

@@ -43,8 +43,15 @@ defmodule Tapper.Plug do
     * `debug` - if set to `true` all requests, joined or started, will be sampled.
     * `tapper` - keyword list passed on to `Tapper.start/1` or `Tapper.join/6` (useful for testing/debugging, but use with caution
       since overrides options set by this module).
+    * `path_redactor` - an `{M, F, A}` that will be used to redact the `request_path` when used in annotations.
 
     All options, including custom ones, will be passed to the `sampler` function (as a map), which means it can be configured here too.
+
+    ## Alternative Configuration
+
+    The `debug` flag can also be set via Application config using a `:tapper_plug, :debug` property, i.e. as returned from
+    `Application.get_env(:tapper_plug, :debug)`. This makes it easier to, for example, force traces in development, but not in
+    production.
 
     ## Annotations
     `Tapper.Plug` sets the following annotations:
@@ -52,6 +59,22 @@ defmodule Tapper.Plug do
     * `ca` - client address, from `conn.remote_ip`.
     * `http.host`, `http.method`, `http.path` - from corresponding `Plug.Conn` fields.
     * `ss` - server send when finishing a trace.
+
+    ## Redacting
+    The `http.path` annotation, and the `name` of the root span when starting a new trace, contain the `Plug.Conn.request_path` which
+    may contain sensitive information. For this reason, the path can be passed through a redacting function, using the `path_redactor`
+    option. The function is specfified using an `{M, F, A}`; the `request_path` is  passed as the first argument, with other
+    arguments appended.
+
+    ```
+    plug Tapper.Plug.Trace, path_redactor: {MyUUIDRedactor, :path_redactor, []}
+
+    defmodule MyUUIDRedactor do
+      def path_redactor(path) do
+        Regex.replace(~r/[\da-zA-Z]{8}-(([\dA-Za-z]{4}-){3})[\da-zA-Z]{12}/, path, "**UUID**")
+      end
+    end
+    ```
     """
 
     @behaviour Plug
@@ -59,8 +82,9 @@ defmodule Tapper.Plug do
     def init(opts) do
       config = %{
         sampler: Keyword.get(opts, :sampler, Tapper.Plug.Sampler.Simple),
-        debug: Keyword.get(opts, :debug, false),
-        tapper: Keyword.get(opts, :tapper, [])
+        debug: Keyword.get(opts, :debug, false) || Application.get_env(:tapper_plug, :debug, false),
+        tapper: Keyword.get(opts, :tapper, []),
+        path_redactor: Keyword.get(opts, :path_redactor)
       }
       Enum.into(Keyword.drop(opts, [:sampler, :debug, :tapper]), config)
     end
@@ -111,6 +135,7 @@ defmodule Tapper.Plug do
 
       tapper_opts = Keyword.merge(
         [
+          name: conn.method <> " " <> redact(conn.request_path, config),
           type: :server,
           sample: sample,
           debug: config[:debug],
@@ -124,13 +149,16 @@ defmodule Tapper.Plug do
       Tapper.Plug.store(conn, id)
     end
 
+    defp redact(path, %{path_redactor: nil}), do: path
+    defp redact(path, %{path_redactor: {m, f, a}}), do: apply(m, f, [path | a])
+
     @doc false
-    def annotations(conn, _config) do
+    def annotations(conn, config) do
       [
         Tapper.client_address(%Tapper.Endpoint{ip: conn.remote_ip}),
         Tapper.http_host(conn.host),
         Tapper.http_method(conn.method),
-        Tapper.http_path(conn.request_path)
+        Tapper.http_path(redact(conn.request_path, config))
       ]
     end
 
