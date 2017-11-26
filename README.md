@@ -123,16 +123,5 @@ def deps do
 end
 ```
 
-Ensure the `:tapper` application is present in your mix project's applications:
-
-```elixir
-  # Configuration for the OTP application.
-  #
-  # Type `mix help compile.app` for more information.
-  def application do
-    [
-      mod: {MyApp, []},
-      applications: [:tapper]
-    ]
-  end
-```
+The `:tapper` application will be started automatically by Elixir 1.4+, as it is a non-optional dependency
+of this project.
