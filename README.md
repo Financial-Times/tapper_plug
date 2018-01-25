@@ -123,5 +123,4 @@ def deps do
 end
 ```
 
-The `:tapper` application will be started automatically by Elixir 1.4+, as it is a non-optional dependency
-of this project.
+For Elixir 1.4+ you don't need to add the `:tapper` application to your project's applications, it will be auto-detected (unless it is an `optional` dependency, in which case add it to the `extra_applications` key as necessary, or use the `Tapper.).
