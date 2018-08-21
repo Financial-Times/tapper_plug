@@ -43,6 +43,21 @@ id = Tapper.finish_span(id)
 
 It is the application's responsibility to maintain the Tapper Id locally through its child-spans.
 
+## Contextual API
+
+You can enable use of contextual API using `contextual: true` option in `Tapper.Plug.Trace`.
+
+
+```elixir
+  plug Tapper.Plug.Trace, contextual: true
+```
+
+This will allow you to access the trace id in the application without explicitly passing the trace id.
+
+```elixir
+  id = Tapper.Ctx.context()
+```
+
 ## Filtering with Tapper.Plug.Filter
 
 This filter takes a list of URL path prefixes to be excluded from sampling, even if a sampled or debug B3 header is sent.
