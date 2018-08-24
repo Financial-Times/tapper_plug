@@ -16,15 +16,17 @@ defmodule TapperPlugTest do
       assert config[:sampler] == Tapper.Plug.Sampler.Simple
       assert config[:debug] == false
       assert config[:tapper] == []
+      assert config[:contextual] == false
       assert config[:top] == :bottom
     end
 
     test "config sets sampler and tapper opts, and contains custom keys" do
-      config = Tapper.Plug.Trace.init(debug: true, sampler: Some.Module, tapper: [something: true], path_redactor: {Mod, :fun, [1]}, left: :right)
+      config = Tapper.Plug.Trace.init(debug: true, sampler: Some.Module, tapper: [something: true], path_redactor: {Mod, :fun, [1]}, left: :right, contextual: true)
       assert config[:sampler] == Some.Module
       assert config[:debug] == true
       assert config[:tapper] == [something: true]
       assert config[:path_redactor] == {Mod, :fun, [1]}
+      assert config[:contextual] == true
       assert config[:left] == :right
     end
 
@@ -292,6 +294,88 @@ defmodule TapperPlugTest do
       assert has_binary_annotation?(hd(spans), "http.path", "****")
     end
 
+  end
+
+  describe "contextual API enabled" do
+    test "populates context on joined trace" do
+      pid = self()
+      config = Tapper.Plug.Trace.init(contextual: true, tapper: [reporter: fn(spans) -> send(pid, {:spans, spans}) end])
+
+      conn = conn(:get, "http://test-host/test")
+      |> put_req_header("x-b3-traceid", "1fffffff")
+      |> put_req_header("x-b3-parentspanid", "2ffffffff")
+      |> put_req_header("x-b3-spanid", "ffff")
+      |> put_req_header("x-b3-sampled", "1")
+      |> put_req_header("user-agent", "the-ua")
+      |> Tapper.Plug.Trace.call(config)
+
+      id = conn.private[:tapper_plug]
+      assert Tapper.Ctx.context() == id
+
+      conn = Plug.Conn.resp(conn, 200, "Body")
+      run_before_send(conn, :set) # Plug.Test doesn't support before_send (yet)
+      _conn = Plug.Conn.send_resp(conn)
+
+      assert !Tapper.Ctx.context?()
+    end
+
+    test "populates context on started trace" do
+      pid = self()
+      config = Tapper.Plug.Trace.init(sampler: fn _,_ -> true end, contextual: true, tapper: [reporter: fn(spans) -> send(pid, {:spans, spans}) end])
+
+      conn = conn(:get, "http://test-host/test")
+      conn = Tapper.Plug.Trace.call(conn, config)
+
+      id = conn.private[:tapper_plug]
+      assert Tapper.Ctx.context() == id
+
+      conn = Plug.Conn.resp(conn, 200, "Body")
+      run_before_send(conn, :set) # Plug.Test doesn't support before_send (yet)
+      _conn = Plug.Conn.send_resp(conn)
+
+      assert !Tapper.Ctx.context?()
+    end
+  end
+
+  describe "contextual API disabled" do
+    test "does not populate context on joined trace" do
+      pid = self()
+      config = Tapper.Plug.Trace.init(tapper: [reporter: fn(spans) -> send(pid, {:spans, spans}) end])
+
+      conn = conn(:get, "http://test-host/test")
+      |> put_req_header("x-b3-traceid", "1fffffff")
+      |> put_req_header("x-b3-parentspanid", "2ffffffff")
+      |> put_req_header("x-b3-spanid", "ffff")
+      |> put_req_header("x-b3-sampled", "1")
+      |> put_req_header("user-agent", "the-ua")
+      |> Tapper.Plug.Trace.call(config)
+
+      id = conn.private[:tapper_plug]
+      assert !Tapper.Ctx.context?()
+
+      conn = Plug.Conn.resp(conn, 200, "Body")
+      run_before_send(conn, :set) # Plug.Test doesn't support before_send (yet)
+      _conn = Plug.Conn.send_resp(conn)
+
+      assert !Tapper.Ctx.context?()
+    end
+
+    test "does not populate context on started trace" do
+      pid = self()
+      config = Tapper.Plug.Trace.init(sampler: fn _,_ -> true end, tapper: [reporter: fn(spans) -> send(pid, {:spans, spans}) end])
+
+      conn = conn(:get, "http://test-host/test")
+      conn = Tapper.Plug.Trace.call(conn, config)
+
+      id = conn.private[:tapper_plug]
+      assert !Tapper.Ctx.context?()
+
+      conn = Plug.Conn.resp(conn, 200, "Body")
+      run_before_send(conn, :set) # Plug.Test doesn't support before_send (yet)
+      _conn = Plug.Conn.send_resp(conn)
+
+      assert !Tapper.Ctx.context?()
+    end
   end
 
   defp run_before_send(%Plug.Conn{before_send: before_send} = conn, new) do

@@ -44,6 +44,7 @@ defmodule Tapper.Plug do
     * `tapper` - keyword list passed on to `Tapper.start/1` or `Tapper.join/6` (useful for testing/debugging, but use with caution
       since overrides options set by this module).
     * `path_redactor` - an `{M, F, A}` that will be used to redact the `request_path` when used in annotations.
+    * `contenxtual` - uses the alternative contextual API if set to true, defaults to false.
 
     All options, including custom ones, will be passed to the `sampler` function (as a map), which means it can be configured here too.
 
@@ -84,7 +85,8 @@ defmodule Tapper.Plug do
         sampler: Keyword.get(opts, :sampler, Tapper.Plug.Sampler.Simple),
         debug: Keyword.get(opts, :debug, false) || Application.get_env(:tapper_plug, :debug, false),
         tapper: Keyword.get(opts, :tapper, []),
-        path_redactor: Keyword.get(opts, :path_redactor)
+        path_redactor: Keyword.get(opts, :path_redactor),
+        contextual: Keyword.get(opts, :contextual, false)
       }
       Enum.into(Keyword.drop(opts, [:sampler, :debug, :tapper]), config)
     end
@@ -126,6 +128,10 @@ defmodule Tapper.Plug do
 
       id = Tapper.join(trace_id, span_id, parent_id, sample, debug || config[:debug], tapper_opts)
 
+      if contextual?(config) do
+        Tapper.Ctx.put_context(id)
+      end
+
       Tapper.Plug.store(conn, id)
     end
 
@@ -145,6 +151,10 @@ defmodule Tapper.Plug do
       )
 
       id = Tapper.start(tapper_opts)
+
+      if contextual?(config) do
+        Tapper.Ctx.put_context(id)
+      end
 
       Tapper.Plug.store(conn, id)
     end
@@ -170,6 +180,7 @@ defmodule Tapper.Plug do
       end
     end
 
+    defp contextual?(%{contextual: contextual}), do: contextual
   end
 
   defmodule Trace.Finish do
@@ -183,6 +194,10 @@ defmodule Tapper.Plug do
     """
     def annotate(conn) do
       id = Tapper.Plug.fetch(conn)
+
+      if Tapper.Ctx.context?() && Tapper.Ctx.context() == id do
+        Tapper.Ctx.delete_context()
+      end
 
       Tapper.finish(id, annotations: [
         Tapper.server_send(),
