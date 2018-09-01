@@ -247,7 +247,7 @@ defmodule TapperPlugTest do
   describe "redaction" do
 
     defmodule Redactor do
-      def redact(s, :x), do: "****"
+      def redact(_s, :x), do: "****"
     end
 
     test "redacts path in started trace name and annotation" do
@@ -316,7 +316,7 @@ defmodule TapperPlugTest do
       run_before_send(conn, :set) # Plug.Test doesn't support before_send (yet)
       _conn = Plug.Conn.send_resp(conn)
 
-      assert !Tapper.Ctx.context?()
+      refute Tapper.Ctx.context?()
     end
 
     test "populates context on started trace" do
@@ -333,7 +333,7 @@ defmodule TapperPlugTest do
       run_before_send(conn, :set) # Plug.Test doesn't support before_send (yet)
       _conn = Plug.Conn.send_resp(conn)
 
-      assert !Tapper.Ctx.context?()
+      refute Tapper.Ctx.context?()
     end
   end
 
@@ -350,14 +350,14 @@ defmodule TapperPlugTest do
       |> put_req_header("user-agent", "the-ua")
       |> Tapper.Plug.Trace.call(config)
 
-      id = conn.private[:tapper_plug]
-      assert !Tapper.Ctx.context?()
+      assert conn.private[:tapper_plug]
+      refute Tapper.Ctx.context?()
 
       conn = Plug.Conn.resp(conn, 200, "Body")
       run_before_send(conn, :set) # Plug.Test doesn't support before_send (yet)
       _conn = Plug.Conn.send_resp(conn)
 
-      assert !Tapper.Ctx.context?()
+      refute Tapper.Ctx.context?()
     end
 
     test "does not populate context on started trace" do
@@ -367,14 +367,14 @@ defmodule TapperPlugTest do
       conn = conn(:get, "http://test-host/test")
       conn = Tapper.Plug.Trace.call(conn, config)
 
-      id = conn.private[:tapper_plug]
-      assert !Tapper.Ctx.context?()
+      assert conn.private[:tapper_plug]
+      refute Tapper.Ctx.context?()
 
       conn = Plug.Conn.resp(conn, 200, "Body")
       run_before_send(conn, :set) # Plug.Test doesn't support before_send (yet)
       _conn = Plug.Conn.send_resp(conn)
 
-      assert !Tapper.Ctx.context?()
+      refute Tapper.Ctx.context?()
     end
   end
 

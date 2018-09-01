@@ -44,7 +44,7 @@ defmodule Tapper.Plug do
     * `tapper` - keyword list passed on to `Tapper.start/1` or `Tapper.join/6` (useful for testing/debugging, but use with caution
       since overrides options set by this module).
     * `path_redactor` - an `{M, F, A}` that will be used to redact the `request_path` when used in annotations.
-    * `contenxtual` - uses the alternative contextual API if set to true, defaults to false.
+    * `contextual` - if set to `true`, propagates the `Tapper.Id` via `Tapper.Ctx.put_context/1`; defaults to `false`.
 
     All options, including custom ones, will be passed to the `sampler` function (as a map), which means it can be configured here too.
 
