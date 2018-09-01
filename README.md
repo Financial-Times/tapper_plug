@@ -134,8 +134,6 @@ For release versions, the package can be installed by adding `tapper_plug` to yo
 
 ```elixir
 def deps do
-  [{:tapper_plug, "~> 0.2"}]
+  [{:tapper_plug, "~> 0.4"}]
 end
 ```
-
-For Elixir 1.4+ you don't need to add the `:tapper` application to your project's applications, it will be auto-detected (unless it is an `optional` dependency, in which case add it to the `extra_applications` key as necessary, or use the `Tapper.).

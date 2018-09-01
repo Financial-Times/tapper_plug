@@ -3,7 +3,7 @@ defmodule TapperPlug.Mixfile do
 
   def project do
     [app: :tapper_plug,
-     version: "0.3.0",
+     version: "0.4.0",
      elixir: "~> 1.4",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
@@ -49,7 +49,7 @@ defmodule TapperPlug.Mixfile do
       {:plug, "~> 1.0"},
       {:credo, "~> 0.8", only: [:dev, :test]},
       {:mix_test_watch, "~> 0.5", only: :dev, runtime: false},
-      {:ex_doc, "~> 0.18", only: :dev, runtime: false},
+      {:ex_doc, "~> 0.18.0", only: :dev, runtime: false},
       {:dialyxir, "~> 0.5", only: [:dev]},
       {:inch_ex, ">= 0.0.0", only: :docs}
     ]

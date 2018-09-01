@@ -1,3 +1,7 @@
+## v0.4.0
+
+* Support for automatically propagating the `Tapper.Id` to `Tapper.Ctx`: see the `contextual` property. #2. (HT @indrekj).
+
 ## v0.3.0 
 
 * Add optional `path_redactor` hook for whenever `Plug.Conn.request_path` is used.
