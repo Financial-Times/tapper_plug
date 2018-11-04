@@ -1,3 +1,7 @@
+## v0.5.0
+
+* [B3 Single](https://cwiki.apache.org/confluence/display/ZIPKIN/b3+single+header+format) propagation format support.
+
 ## v0.4.0
 
 * Support for automatically propagating the `Tapper.Id` to `Tapper.Ctx`: see the `contextual` property. #2. (HT @indrekj).

@@ -2,18 +2,20 @@ defmodule TapperPlug.Mixfile do
   use Mix.Project
 
   def project do
-    [app: :tapper_plug,
-     version: "0.4.0",
-     elixir: "~> 1.4",
-     build_embedded: Mix.env == :prod,
-     start_permanent: Mix.env == :prod,
-     dialyzer: [plt_add_deps: :project],
-     name: "Tapper Plug",
-     source_url: "https://github.com/Financial-Times/tapper_plug",
-     description: "Plug integration for Tapper.",
-     package: package(),
-     docs: docs(),
-     deps: deps()]
+    [
+      app: :tapper_plug,
+      version: "0.5.0",
+      elixir: "~> 1.4",
+      build_embedded: Mix.env() == :prod,
+      start_permanent: Mix.env() == :prod,
+      dialyzer: [plt_add_deps: :project],
+      name: "Tapper Plug",
+      source_url: "https://github.com/Financial-Times/tapper_plug",
+      description: "Plug integration for Tapper.",
+      package: package(),
+      docs: docs(),
+      deps: deps()
+    ]
   end
 
   def application do
@@ -29,8 +31,7 @@ defmodule TapperPlug.Mixfile do
   end
 
   def docs do
-    [main: "readme",
-     extras: ["README.md"]]
+    [main: "readme", extras: ["README.md"]]
   end
 
   # Dependencies can be Hex packages:
@@ -49,7 +50,7 @@ defmodule TapperPlug.Mixfile do
       {:plug, "~> 1.0"},
       {:credo, "~> 0.8", only: [:dev, :test]},
       {:mix_test_watch, "~> 0.5", only: :dev, runtime: false},
-      {:ex_doc, "~> 0.18.0", only: :dev, runtime: false},
+      {:ex_doc, "~> 0.19", only: :dev, runtime: false},
       {:dialyxir, "~> 0.5", only: [:dev]},
       {:inch_ex, ">= 0.0.0", only: :docs}
     ]

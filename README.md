@@ -20,7 +20,10 @@ plug Myapp.Web.Router  # standard Phoenix router etc.
 ```
 
 1. you can exclude certain URLs for the purposes of tracing using the optional `Tapper.Plug.Filter`.
-2. install the `Tapper.Plug.Trace` plug as soon as possible in the plug list, for timing accuracy. This plug reads any incoming [B3](https://github.com/openzipkin/b3-propagation) style headers, and either joins the incoming span, or starts a new one (dependent on result of sampling), adding a 'server receive' annotation, and various other binary annotations with incoming request details.
+2. install the `Tapper.Plug.Trace` plug as soon as possible in the plug list, for timing accuracy. This plug reads any 
+incoming [B3](https://github.com/openzipkin/b3-propagation) headers, and either joins the incoming trace,
+or starts a new one (dependent on result of sampling), adding a 'server receive' annotation, and various other binary 
+annotations with incoming request details.
 
 ### See also
 
@@ -106,19 +109,28 @@ determining whether to report a trace in an implementation of Tapper's reporter.
 
 ## Propagating a Trace Downstream
 
-`Tapper.Plug.HeaderPropagation.encode/1` will encode a Tapper Id into [B3](https://github.com/openzipkin/b3-propagation) headers (as a keyword list) suitable for
+`Tapper.Plug.HeaderPropagation.encode/1` will encode a Tapper Id into 
+[B3](https://github.com/openzipkin/b3-propagation) headers (as a keyword list) suitable for
 passing to HTTPoison etc. for propagation to down-stream servers:
 
 ```elixir
 id = Tapper.start_span(id, name: "call-out")
 
-headers = Tapper.Plug.HeaderPropagation.encode(id)
+b3_headers = Tapper.Plug.HeaderPropagation.encode(id)
 
-response = HTTPoison.get("http://some.service.com/some/api", headers)
+response = HTTPoison.get("http://some.service.com/some/api", b3_headers)
 ```
 
-For non-HTTP propagation, you could translate the headers to whatever structure you need to populate, or use `Tapper.Id.destructure/1` to
-obtain the underlying information.
+For non-HTTP propagation, you could translate the encoded output to whatever structure you need to populate, 
+or use `Tapper.Id.destructure/1` to obtain the underlying information from a `Tapper.Id` and encode it yourself.
+
+### See also
+
+The module `Tapper.Plug.HeaderPropagation.B3Single` can be used to encode to the 
+[B3 Single](https://cwiki.apache.org/confluence/display/ZIPKIN/b3+single+header+format) format instead of the
+original B3 multiple-header format; note that `Tapper.Plug` automatically supports either format when decoding 
+incoming trace headers.
+
 
 ## Installation
 
@@ -134,6 +146,6 @@ For release versions, the package can be installed by adding `tapper_plug` to yo
 
 ```elixir
 def deps do
-  [{:tapper_plug, "~> 0.4"}]
+  [{:tapper_plug, "~> 0.5"}]
 end
 ```

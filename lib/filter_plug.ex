@@ -22,12 +22,20 @@ defmodule Tapper.Plug.Filter do
 
   @doc false
   def split(prefix) when is_list(prefix), do: prefix
+
   def split(prefix) when is_binary(prefix) do
     String.split(prefix, "/", trim: true)
   end
-  def split(_prefix), do: raise ArgumentError, ~S(prefixes must be a path "/a/b" or list of path components ["a","b"])
+
+  def split(_prefix),
+    do:
+      raise(
+        ArgumentError,
+        ~S(prefixes must be a path "/a/b" or list of path components ["a","b"])
+      )
 
   def call(conn, []), do: conn
+
   def call(conn, prefixes) do
     case is_prefix?(prefixes, conn.path_info) do
       true -> Tapper.Plug.store(conn, :ignore)
@@ -37,7 +45,6 @@ defmodule Tapper.Plug.Filter do
 
   @doc false
   def is_prefix?(prefixes, path_info) do
-    Enum.any?(prefixes, fn(prefix) -> :lists.prefix(prefix, path_info) end)
+    Enum.any?(prefixes, fn prefix -> :lists.prefix(prefix, path_info) end)
   end
-
 end

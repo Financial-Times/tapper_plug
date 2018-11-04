@@ -9,15 +9,15 @@ defmodule Tapper.Plug do
   import Plug.Conn
 
   @doc "store Tapper trace id in connection"
-  @spec store(conn :: Plug.Conn.t, id :: Tapper.Id.t | :ignore) :: Plug.Conn.t
+  @spec store(conn :: Plug.Conn.t(), id :: Tapper.Id.t() | :ignore) :: Plug.Conn.t()
   def store(conn, id)
-  def store(conn = %Plug.Conn{}, :ignore), do: put_private(conn, :tapper_plug, :ignore)
-  def store(conn = %Plug.Conn{}, id = %Tapper.Id{}), do: put_private(conn, :tapper_plug, id)
+  def store(%Plug.Conn{} = conn, :ignore), do: put_private(conn, :tapper_plug, :ignore)
+  def store(%Plug.Conn{} = conn, %Tapper.Id{} = id), do: put_private(conn, :tapper_plug, id)
 
   @doc "fetch Tapper trace id from connection "
-  @spec fetch(conn :: Plug.Conn.t | map()) :: Tapper.Id.t | :ignore
+  @spec fetch(conn :: Plug.Conn.t() | map()) :: Tapper.Id.t() | :ignore
   def fetch(conn)
-  def fetch(conn = %Plug.Conn{}), do: conn.private[:tapper_plug]
+  def fetch(%Plug.Conn{} = conn), do: conn.private[:tapper_plug]
   def fetch(%{tapper_plug: id}), do: id
   def fetch(_), do: :ignore
 
@@ -83,28 +83,30 @@ defmodule Tapper.Plug do
     def init(opts) do
       config = %{
         sampler: Keyword.get(opts, :sampler, Tapper.Plug.Sampler.Simple),
-        debug: Keyword.get(opts, :debug, false) || Application.get_env(:tapper_plug, :debug, false),
+        debug:
+          Keyword.get(opts, :debug, false) || Application.get_env(:tapper_plug, :debug, false),
         tapper: Keyword.get(opts, :tapper, []),
         path_redactor: Keyword.get(opts, :path_redactor),
         contextual: Keyword.get(opts, :contextual, false)
       }
+
       Enum.into(Keyword.drop(opts, [:sampler, :debug, :tapper]), config)
     end
 
-    def call(conn = %Plug.Conn{private: %{tapper_plug: :ignore}}, _), do: conn
+    def call(%Plug.Conn{private: %{tapper_plug: :ignore}} = conn, _), do: conn
 
     def call(conn, config) do
-      conn = case Tapper.Plug.HeaderPropagation.decode(conn.req_headers) do
-        {:join, trace_id, span_id, parent_id, sample, debug} ->
-          join(conn, config, trace_id, span_id, parent_id, sample, debug)
+      conn =
+        case Tapper.Plug.HeaderPropagation.decode(conn.req_headers) do
+          {:join, trace_id, span_id, parent_id, sample, debug} ->
+            join(conn, config, trace_id, span_id, parent_id, sample, debug)
 
-        :start ->
-          start(conn, config)
-      end
+          :start ->
+            start(conn, config)
+        end
 
       conn
       |> register_before_send(&Tapper.Plug.Trace.Finish.annotate/1)
-
     end
 
     @doc "join a trace, running the sampler if 'sampled' not expicitly sent"
@@ -120,11 +122,14 @@ defmodule Tapper.Plug do
     end
 
     def join(conn, config, trace_id, span_id, parent_id, sample, debug) do
-      tapper_opts = Keyword.merge([
-          type: :server,
-          annotations: annotations(conn, config)
-        ],
-        config[:tapper])
+      tapper_opts =
+        Keyword.merge(
+          [
+            type: :server,
+            annotations: annotations(conn, config)
+          ],
+          config[:tapper]
+        )
 
       id = Tapper.join(trace_id, span_id, parent_id, sample, debug || config[:debug], tapper_opts)
 
@@ -139,16 +144,17 @@ defmodule Tapper.Plug do
     def start(conn, config) do
       sample = sample_request(conn, config)
 
-      tapper_opts = Keyword.merge(
-        [
-          name: conn.method <> " " <> redact(conn.request_path, config),
-          type: :server,
-          sample: sample,
-          debug: config[:debug],
-          annotations: annotations(conn, config)
-        ],
-        config[:tapper]
-      )
+      tapper_opts =
+        Keyword.merge(
+          [
+            name: conn.method <> " " <> redact(conn.request_path, config),
+            type: :server,
+            sample: sample,
+            debug: config[:debug],
+            annotations: annotations(conn, config)
+          ],
+          config[:tapper]
+        )
 
       id = Tapper.start(tapper_opts)
 
@@ -173,7 +179,7 @@ defmodule Tapper.Plug do
     end
 
     @doc false
-    def sample_request(conn, config = %{sampler: sampler}) do
+    def sample_request(conn, %{sampler: sampler} = config) do
       case sampler do
         fun when is_function(fun, 2) -> fun.(conn, config)
         mod when is_atom(mod) -> apply(mod, :sample?, [conn, config])
@@ -199,13 +205,14 @@ defmodule Tapper.Plug do
         Tapper.Ctx.delete_context()
       end
 
-      Tapper.finish(id, annotations: [
-        Tapper.server_send(),
-        Tapper.http_status_code(conn.status),
-      ])
+      Tapper.finish(id,
+        annotations: [
+          Tapper.server_send(),
+          Tapper.http_status_code(conn.status)
+        ]
+      )
 
       conn
     end
   end
-
 end

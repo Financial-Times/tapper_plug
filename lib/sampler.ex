@@ -1,7 +1,7 @@
 defmodule Tapper.Plug.Sampler do
   @moduledoc "Behavior for Trace Samplers"
 
-  @callback sample?(conn :: Plug.Conn.t, config :: Map.t) :: boolean()
+  @callback sample?(conn :: Plug.Conn.t(), config :: map) :: boolean()
 end
 
 defmodule Tapper.Plug.Sampler.Simple do
@@ -18,7 +18,7 @@ defmodule Tapper.Plug.Sampler.Simple do
 
   @behaviour Tapper.Plug.Sampler
 
-  def sample?(_conn = %Plug.Conn{}, config) do
+  def sample?(%Plug.Conn{}, config) do
     # sample X%
     percentage = max(0, min(100, config[:percent] || 10))
     :rand.uniform(100) - 1 < percentage
