@@ -176,13 +176,14 @@ defmodule Tapper.Plug.HeaderPropagation do
     defp decode_mandatory(_), do: :error
 
     @doc "encode a `Tapper` trace context to B3 Single format string; use this to set an appropriate downstream header or property."
-    @spec encode_value(idOrDestructured :: Tapper.Id.t() | tuple()) :: binary()
+    @spec encode(idOrDestructured :: Tapper.Id.t() | tuple()) :: binary()
     def encode(idOrDestructed)
 
     def encode(%Tapper.Id{} = id) do
       encode_value(Tapper.Id.destructure(id))
     end
 
+    @doc false
     def encode_value({trace_id, span_id, "", _, true}) do
       trace_id <> "-" <> span_id <> "-d"
     end
