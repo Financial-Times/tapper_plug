@@ -1,3 +1,8 @@
+## v0.5.1
+
+* Update dependencies 
+  * add `:plug` to Mix's `extra_applications` for 1.7 compatibility.
+
 ## v0.5.0
 
 * [B3 Single](https://cwiki.apache.org/confluence/display/ZIPKIN/b3+single+header+format) propagation format support.
