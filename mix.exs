@@ -19,7 +19,7 @@ defmodule TapperPlug.Mixfile do
   end
 
   def application do
-    [applications: [:tapper], extra_applications: [:logger]]
+    [applications: [:tapper], extra_applications: [:logger ,:plug]]
   end
 
   def package do
@@ -48,7 +48,7 @@ defmodule TapperPlug.Mixfile do
       {:tapper, "~> 0.2"},
       # {:tapper, github: "Financial-Times/tapper"},
       {:plug, "~> 1.0"},
-      {:credo, "~> 0.8", only: [:dev, :test]},
+      {:credo, "~> 1.0", only: [:dev, :test]},
       {:mix_test_watch, "~> 0.5", only: :dev, runtime: false},
       {:ex_doc, "~> 0.19", only: :dev, runtime: false},
       {:dialyxir, "~> 0.5", only: [:dev]},
