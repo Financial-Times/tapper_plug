@@ -84,7 +84,7 @@ defmodule Tapper.Plug.HeaderPropagation do
     i.e. a list of 2-tuples like `{"x-b3-traceid", "463ac35c9f6413ad48485a3953bb6124"}`.
 
     This encodes headers in the original B3 multi-header format, to use the B3 Single format,
-    use `Tapper.Plug.HeaderPropagation.B3Single.encode_value/1`.
+    use `Tapper.Plug.HeaderPropagation.B3Single.encode/1`.
 
     ## Example
     ```
@@ -256,7 +256,7 @@ defmodule Tapper.Plug.HeaderPropagation do
   i.e. a list of 2-tuples like `{"x-b3-traceid", "463ac35c9f6413ad48485a3953bb6124"}`.
 
   > This encodes to headers in the original B3 multi-header format, to use the B3 Single format,
-    use `Tapper.Plug.HeaderPropagation.B3Single.encode_value/1`.
+    use `Tapper.Plug.HeaderPropagation.B3Single.encode/1`.
 
   ## Example
   ```
