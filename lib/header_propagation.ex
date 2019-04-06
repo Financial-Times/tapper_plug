@@ -168,7 +168,7 @@ defmodule Tapper.Plug.HeaderPropagation do
     defp decode_optional(_), do: :error
 
     defp decode_mandatory(
-           <<raw_trace_id::bytes-size(32), "-", raw_span_id::bytes-size(16), rest::binary>>
+           <<raw_trace_id::bytes-size(32), "-", raw_span_id::bytes-size(16), rest::bits>>
          ) do
       {raw_trace_id, raw_span_id, rest}
     end
