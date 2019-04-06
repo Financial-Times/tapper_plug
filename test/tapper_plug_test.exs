@@ -4,6 +4,11 @@ defmodule TapperPlugTest do
 
   doctest Tapper.Plug
 
+  @trace_id_64 "1fffffff1fffffff"
+  @trace_id_128 "1fffffff1ffffffffffffff1fffffff1"
+  @span_id "1fffffffffffffff"
+  @parent_span_id "2fffffffffffffff"
+
   setup do
     Application.ensure_all_started(:tapper)
 
@@ -110,16 +115,17 @@ defmodule TapperPlugTest do
   end
 
   describe "header parsing" do
-    test "decodes headers into %Tapper.Id{}" do
+
+    test "decodes headers into %Tapper.Id{} - 64 bit trace id" do
       # see also tests in header_propagation_test.exs
 
       config = Tapper.Plug.Trace.init([])
 
       conn =
         conn(:get, "/test")
-        |> put_req_header("x-b3-traceid", "1fffffff")
-        |> put_req_header("x-b3-parentspanid", "2ffffffff")
-        |> put_req_header("x-b3-spanid", "ffff")
+        |> put_req_header("x-b3-traceid", @trace_id_64)
+        |> put_req_header("x-b3-parentspanid", @parent_span_id)
+        |> put_req_header("x-b3-spanid", @span_id)
         |> put_req_header("x-b3-sampled", "1")
 
       new_conn = Tapper.Plug.Trace.call(conn, config)
@@ -129,12 +135,39 @@ defmodule TapperPlugTest do
       {trace_id_hex, span_id_hex, parent_id_hex, sampled_flag, debug_flag} =
         Tapper.Id.destructure(id)
 
-      assert String.to_integer(trace_id_hex, 16) === 0x1FFFFFFF
-      assert String.to_integer(span_id_hex, 16) === 0xFFFF
-      assert String.to_integer(parent_id_hex, 16) === 0x2FFFFFFFF
+      assert trace_id_hex === @trace_id_64
+      assert span_id_hex === @span_id
+      assert parent_id_hex === @parent_span_id
       assert sampled_flag == true
       assert debug_flag == false
     end
+
+    test "decodes headers into %Tapper.Id{} - 128 bit trace id" do
+      # see also tests in header_propagation_test.exs
+
+      config = Tapper.Plug.Trace.init([])
+
+      conn =
+        conn(:get, "/test")
+        |> put_req_header("x-b3-traceid", @trace_id_128)
+        |> put_req_header("x-b3-parentspanid", @parent_span_id)
+        |> put_req_header("x-b3-spanid", @span_id)
+        |> put_req_header("x-b3-sampled", "1")
+
+      new_conn = Tapper.Plug.Trace.call(conn, config)
+
+      id = new_conn.private[:tapper_plug]
+
+      {trace_id_hex, span_id_hex, parent_id_hex, sampled_flag, debug_flag} =
+        Tapper.Id.destructure(id)
+
+      assert trace_id_hex === @trace_id_128
+      assert span_id_hex === @span_id
+      assert parent_id_hex === @parent_span_id
+      assert sampled_flag == true
+      assert debug_flag == false
+    end
+
 
     test "id is sampled when propagated trace is sampled" do
       pid = self()
@@ -149,9 +182,9 @@ defmodule TapperPlugTest do
 
       conn =
         conn(:get, "/test")
-        |> put_req_header("x-b3-traceid", "1fffffff")
-        |> put_req_header("x-b3-parentspanid", "2ffffffff")
-        |> put_req_header("x-b3-spanid", "ffff")
+        |> put_req_header("x-b3-traceid", @trace_id_64)
+        |> put_req_header("x-b3-parentspanid", @parent_span_id)
+        |> put_req_header("x-b3-spanid", @span_id)
         |> put_req_header("x-b3-sampled", "1")
 
       new_conn = Tapper.Plug.Trace.call(conn, config)
@@ -176,9 +209,9 @@ defmodule TapperPlugTest do
 
       conn =
         conn(:get, "/test")
-        |> put_req_header("x-b3-traceid", "1fffffff")
-        |> put_req_header("x-b3-parentspanid", "2ffffffff")
-        |> put_req_header("x-b3-spanid", "ffff")
+        |> put_req_header("x-b3-traceid", @trace_id_64)
+        |> put_req_header("x-b3-parentspanid", @parent_span_id)
+        |> put_req_header("x-b3-spanid", @span_id)
         |> put_req_header("x-b3-sampled", "0")
 
       new_conn = Tapper.Plug.Trace.call(conn, config)
@@ -200,9 +233,9 @@ defmodule TapperPlugTest do
 
       conn =
         conn(:get, "http://test-host/test")
-        |> put_req_header("x-b3-traceid", "1fffffff")
-        |> put_req_header("x-b3-parentspanid", "2ffffffff")
-        |> put_req_header("x-b3-spanid", "ffff")
+        |> put_req_header("x-b3-traceid", @trace_id_64)
+        |> put_req_header("x-b3-parentspanid", @parent_span_id)
+        |> put_req_header("x-b3-spanid", @span_id)
         |> put_req_header("x-b3-sampled", "1")
         |> put_req_header("user-agent", "the-ua")
 
@@ -322,9 +355,9 @@ defmodule TapperPlugTest do
 
       conn =
         conn(:get, "http://test-host/test")
-        |> put_req_header("x-b3-traceid", "1fffffff")
-        |> put_req_header("x-b3-parentspanid", "2ffffffff")
-        |> put_req_header("x-b3-spanid", "ffff")
+        |> put_req_header("x-b3-traceid", @trace_id_128)
+        |> put_req_header("x-b3-parentspanid", @parent_span_id)
+        |> put_req_header("x-b3-spanid", @span_id)
         |> put_req_header("x-b3-sampled", "1")
 
       conn = Tapper.Plug.Trace.call(conn, config)
@@ -355,9 +388,9 @@ defmodule TapperPlugTest do
 
       conn =
         conn(:get, "http://test-host/test")
-        |> put_req_header("x-b3-traceid", "1fffffff")
-        |> put_req_header("x-b3-parentspanid", "2ffffffff")
-        |> put_req_header("x-b3-spanid", "ffff")
+        |> put_req_header("x-b3-traceid", @trace_id_128)
+        |> put_req_header("x-b3-parentspanid", @parent_span_id)
+        |> put_req_header("x-b3-spanid", @span_id)
         |> put_req_header("x-b3-sampled", "1")
         |> put_req_header("user-agent", "the-ua")
         |> Tapper.Plug.Trace.call(config)
@@ -407,9 +440,9 @@ defmodule TapperPlugTest do
 
       conn =
         conn(:get, "http://test-host/test")
-        |> put_req_header("x-b3-traceid", "1fffffff")
-        |> put_req_header("x-b3-parentspanid", "2ffffffff")
-        |> put_req_header("x-b3-spanid", "ffff")
+        |> put_req_header("x-b3-traceid", @trace_id_128)
+        |> put_req_header("x-b3-parentspanid", @parent_span_id)
+        |> put_req_header("x-b3-spanid", @span_id)
         |> put_req_header("x-b3-sampled", "1")
         |> put_req_header("user-agent", "the-ua")
         |> Tapper.Plug.Trace.call(config)
