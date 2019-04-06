@@ -4,8 +4,8 @@ defmodule TapperPlug.Mixfile do
   def project do
     [
       app: :tapper_plug,
-      version: "0.5.1",
-      elixir: "~> 1.4",
+      version: "0.5.2",
+      elixir: "~> 1.6",
       build_embedded: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,
       dialyzer: [plt_add_deps: :project],
