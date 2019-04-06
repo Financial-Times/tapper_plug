@@ -1,3 +1,7 @@
+## v0.5.2
+* Minor performance tweak.
+* Update tests to work with Tapper 0.6.0 (had knowledge of `Tapper.TraceId` internals which changed in 0.6.0).
+
 ## v0.5.1
 
 * Update dependencies 
