@@ -1,3 +1,5 @@
+# !!! This repository would be changed to private on 30th of September !!!
+
 # Tapper.Plug
 
 [Plug](https://github.com/elixir-lang/plug) integration for the [Tapper](https://github.com/Financial-Times/tapper) Zipkin client.
